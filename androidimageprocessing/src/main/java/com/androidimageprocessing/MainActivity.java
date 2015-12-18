@@ -2,6 +2,7 @@ package com.androidimageprocessing;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.ImageFormat;
 import android.graphics.Point;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
@@ -12,6 +13,7 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.media.ImageReader;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -20,6 +22,7 @@ import android.util.Size;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.TextureView;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -52,7 +55,8 @@ import renderer.MainRenderer;
 public class MainActivity extends Activity implements SurfaceHolder.Callback{
 
     private SurfaceView mSurfaceView;
-    private SurfaceTexture mSurfaceTexture;
+    private SurfaceTexture mSurfaceTexture;     // Texture view dla openGL
+    private TextureView mSurfaceTextureView;    // Widok tekstury
     private MainView mView;
     private SurfaceHolder mSurfaceHolder;
     private Button mCameraButton;
@@ -65,6 +69,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
     private CaptureRequest.Builder mPreviewRequestBuilder;
     private Handler mBackgroundHandler;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
@@ -76,6 +81,49 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
         mSurfaceHolder = mSurfaceView .getHolder();
         mSurfaceHolder.addCallback(this);
         mSurfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+
+        mSurfaceTextureView = (TextureView) findViewById(R.id.textureView);
+        mSurfaceTextureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
+            @Override
+            public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+                mSurfaceTexture = surface;
+
+
+                try {
+                    CameraManager cm = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+                    String cameraId = cm.getCameraIdList()[0];
+                    CameraCharacteristics cc = cm.getCameraCharacteristics(cameraId);
+                    StreamConfigurationMap streamConfigs = cc.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+                    Size[] rawSizes = streamConfigs.getOutputSizes(ImageFormat.RAW_SENSOR);
+                    Size[] jpegSizes = streamConfigs.getOutputSizes(ImageFormat.JPEG);
+                }
+                catch(Exception e)
+                {
+                    e.printStackTrace();
+                }
+
+
+            }
+
+            @Override
+            public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+
+            }
+
+            @Override
+            public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+                return false;
+            }
+
+            @Override
+            public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+
+            }
+        });
+//        mSurfaceTextureHolder = mSurfaceTexture.getHolder();
+//        mSurfaceTextureHolder.addCallback(this);
+//        mSurfaceTextureHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+
 
         mCameraButton.setOnClickListener(new View.OnClickListener() {
             @Override
