@@ -10,6 +10,7 @@ import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
@@ -51,6 +52,7 @@ import renderer.MainRenderer;
 public class MainActivity extends Activity implements SurfaceHolder.Callback{
 
     private SurfaceView mSurfaceView;
+    private SurfaceTexture mSurfaceTexture;
     private MainView mView;
     private SurfaceHolder mSurfaceHolder;
     private Button mCameraButton;
@@ -69,6 +71,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mSurfaceView = (SurfaceView) findViewById(R.id.surfaceView);
+    //    mSurfaceTexture = ()
         mCameraButton = (Button) findViewById(R.id.button);
         mSurfaceHolder = mSurfaceView .getHolder();
         mSurfaceHolder.addCallback(this);
@@ -190,7 +193,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
 
 
     private final CameraDevice.StateCallback mStateCallback = new CameraDevice.StateCallback() {
-
         @Override
         public void onOpened(CameraDevice cameraDevice) {
             mCameraOpenCloseLock.release();
@@ -226,6 +228,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
 
             mCameraDevice.createCaptureSession(Arrays.asList(mSurfaceView.getHolder().getSurface()),
                     new CameraCaptureSession.StateCallback() {
+                        private void process (CaptureResult result)
+                        {
+                            System.out.println("Processsssss");
+
+                        }
                         @Override
                         public void onConfigured(CameraCaptureSession cameraCaptureSession) {
                             if (null == mCameraDevice)
