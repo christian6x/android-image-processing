@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/android-image-processing-master.iml" filepath="$PROJECT_DIR$/android-image-processing-master.iml" />
+      <module fileurl="file://$PROJECT_DIR$/androidimageprocessing/androidimageprocessing.iml" filepath="$PROJECT_DIR$/androidimageprocessing/androidimageprocessing.iml" />
+    </modules>
+  </component>
+</project>
