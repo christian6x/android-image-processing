@@ -35,5 +35,13 @@
         android:layout_alignParentBottom="true"
         android:layout_toEndOf="@+id/button" />
 
+    <TextureView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/textureView"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="100dp"
+        android:layout_alignEnd="@+id/button" />
+
 
 </RelativeLayout>
