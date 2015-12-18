@@ -97,11 +97,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
                     mSurfaceView.getHolder().getSurfaceFrame().setEmpty();
                 }
                 mCameraState = !mCameraState;
-
             }
 
         });
-
     }
 
     @Override
