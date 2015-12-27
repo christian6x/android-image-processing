@@ -19,29 +19,111 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="New Button"
+        android:text="Camera Preview"
         android:id="@+id/button"
         android:layout_below="@+id/textView"
         android:layout_alignParentStart="true"
         android:layout_marginTop="42dp" />
 
-    <SurfaceView
+    <!--<TextureView-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:id="@+id/textureView"-->
+        <!--android:layout_alignParentStart="true"-->
+        <!--android:layout_marginTop="100dp"-->
+        <!--android:layout_alignEnd="@+id/button" />-->
+
+    <fragment
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/surfaceView"
-        android:layout_below="@+id/button"
-        android:layout_alignParentEnd="true"
-        android:layout_marginTop="60dp"
+        android:name="com.androidimageprocessing.CameraViewFragment2"
+        android:id="@+id/fragment"
+        android:layout_alignTop="@+id/button"
+        tools:layout="@layout/camera_view_frame_fragment"
         android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
         android:layout_toEndOf="@+id/button" />
 
-    <TextureView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/textureView"
+    <TableLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/button"
         android:layout_alignParentStart="true"
-        android:layout_marginTop="100dp"
-        android:layout_alignEnd="@+id/button" />
+        android:layout_alignBottom="@+id/fragment"
+        android:layout_toStartOf="@+id/fragment">
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <Switch
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Resize"
+                android:id="@+id/switch1"
+                android:layout_column="1" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <Switch
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Normalize"
+                android:id="@+id/switch2"
+                android:layout_column="1" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <Switch
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sobel"
+                android:id="@+id/switch3"
+                android:layout_column="1" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <Switch
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Canny"
+                android:id="@+id/switch4"
+                android:layout_column="1" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <Switch
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Dilate"
+                android:id="@+id/switch5"
+                android:layout_column="1" />
+        </TableRow>
+    </TableLayout>
 
 
 </RelativeLayout>

@@ -1,17 +1,21 @@
 package com.androidimageprocessing;
 
 import android.app.Activity;
+import android.app.Fragment;
 import android.content.Context;
 import android.graphics.ImageFormat;
 import android.graphics.Point;
 import android.graphics.SurfaceTexture;
+import android.graphics.SurfaceTexture.OnFrameAvailableListener;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
+import android.hardware.camera2.CameraCaptureSession.CaptureCallback;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
+import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.ImageReader;
 import android.os.Handler;
@@ -27,11 +31,13 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
-
+import android.widget.Switch;
 
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Semaphore;
 
@@ -68,6 +74,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
     private Size mPreviewSize = new Size ( 1920, 1080 );
     private CaptureRequest.Builder mPreviewRequestBuilder;
     private Handler mBackgroundHandler;
+    private Surface surface;
+    private Fragment mCameraFragment;
+    private boolean mResizeSwitch;
+    private boolean mNormalizeSwitch;
+    private boolean mSobelSwitch;
+    private boolean mCannySwitch;
+    private boolean mDilateSwitch;
 
 
     @Override
@@ -75,55 +88,109 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mSurfaceView = (SurfaceView) findViewById(R.id.surfaceView);
-    //    mSurfaceTexture = ()
+       // mSurfaceView = (SurfaceView) findViewById(R.id.surfaceView);
+        //getFragmentManager().beginTransaction().add(R.id.Fra, new CameraViewFragment()).commit();
+      //  mCameraFragment = getFragmentManager().findFragmentById(R.layout.camera_view_fragment);
+        //final CameraViewFragment mCameraFragment = (CameraViewFragment) getFragmentManager().findFragmentById(R.id.fragment);
+        final CameraViewFragment2 mCameraFragment = (CameraViewFragment2) getFragmentManager().findFragmentById(R.id.fragment);
+      //  fragment.<specific_function_name>();
+        //    mSurfaceTexture = ()
         mCameraButton = (Button) findViewById(R.id.button);
-        mSurfaceHolder = mSurfaceView .getHolder();
-        mSurfaceHolder.addCallback(this);
-        mSurfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 
-        mSurfaceTextureView = (TextureView) findViewById(R.id.textureView);
-        mSurfaceTextureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
+        mResizeSwitch = false;
+
+
+        findViewById(R.id.switch1).setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-                mSurfaceTexture = surface;
-
-
-                try {
-                    CameraManager cm = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-                    String cameraId = cm.getCameraIdList()[0];
-                    CameraCharacteristics cc = cm.getCameraCharacteristics(cameraId);
-                    StreamConfigurationMap streamConfigs = cc.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-                    Size[] rawSizes = streamConfigs.getOutputSizes(ImageFormat.RAW_SENSOR);
-                    Size[] jpegSizes = streamConfigs.getOutputSizes(ImageFormat.JPEG);
-                }
-                catch(Exception e)
-                {
-                    e.printStackTrace();
-                }
-
-
-            }
-
-            @Override
-            public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-
-            }
-
-            @Override
-            public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-                return false;
-            }
-
-            @Override
-            public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-
+            public void onClick(View v) {
+                mResizeSwitch = !mResizeSwitch;
+                mCameraFragment.runUpdateState("RESIZE", mResizeSwitch);
             }
         });
+
+        mNormalizeSwitch = false;
+
+        findViewById(R.id.switch2).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mNormalizeSwitch = !mNormalizeSwitch;
+                mCameraFragment.runUpdateState("NORMALIZE", mNormalizeSwitch);
+            }
+        });
+
+        mSobelSwitch = false;
+        findViewById(R.id.switch3).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mSobelSwitch = !mSobelSwitch;
+                mCameraFragment.runUpdateState("SOBEL",mSobelSwitch);
+            }
+        });
+
+        mCannySwitch = false;
+        findViewById(R.id.switch4).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mCannySwitch = !mCannySwitch;
+                mCameraFragment.runUpdateState("CANNY",mCannySwitch);
+            }
+        });
+        
+        mDilateSwitch = false;
+        findViewById(R.id.switch5).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mDilateSwitch = !mDilateSwitch;
+                mCameraFragment.runUpdateState("DILATE",mDilateSwitch);
+            }
+        });
+
+//        mSurfaceHolder = mSurfaceView .getHolder();
+//        mSurfaceHolder.addCallback(this);
+//        mSurfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+
+//        mSurfaceTextureView = (TextureView) findViewById(R.id.textureView);
+//        mSurfaceTextureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
+//            @Override
+//            public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+//                mSurfaceTexture = surface;
+//                try {
+//                    CameraManager cm = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+//                    String cameraId = cm.getCameraIdList()[0];
+//                    CameraCharacteristics cc = cm.getCameraCharacteristics(cameraId);
+//                    StreamConfigurationMap streamConfigs = cc.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+//                    Size[] rawSizes = streamConfigs.getOutputSizes(ImageFormat.RAW_SENSOR);
+//                    Size[] jpegSizes = streamConfigs.getOutputSizes(ImageFormat.JPEG);
+//                }
+//                catch(Exception e)
+//                {
+//                    e.printStackTrace();
+//                }
+//
+//
+//            }
+//
+//            @Override
+//            public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+//
+//            }
+//
+//            @Override
+//            public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+//                return false;
+//            }
+//
+//            @Override
+//            public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+//
+//            }
+//        });
 //        mSurfaceTextureHolder = mSurfaceTexture.getHolder();
 //        mSurfaceTextureHolder.addCallback(this);
 //        mSurfaceTextureHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 
+
+      //  mSurfaceTexture.setOnFrameAvailableListener(mFrameAvailableListener);
 
         mCameraButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -136,19 +203,29 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
                     //mSurfaceView.getHeight();
                     //System.out.println("Displaysize: " + mSurfaceView.getWidth() + " : " + mSurfaceView.getHeight());
                     //cacPreviewSize(ss.x, ss.y);
-                    cacPreviewSize(mSurfaceView.getWidth(), mSurfaceView.getHeight());
-                    openCamera();
+                    mCameraFragment.openCamera();
+                    //cacPreviewSize(mSurfaceTextureView.getWidth(), mSurfaceTextureView.getHeight());
+                    //openCamera();
                 }
                 else
                 {
                     closeCamera();
-                    mSurfaceView.getHolder().getSurfaceFrame().setEmpty();
+                   // mSurfaceView.getHolder().getSurfaceFrame().setEmpty();
                 }
                 mCameraState = !mCameraState;
             }
 
         });
     }
+
+
+    private OnFrameAvailableListener mFrameAvailableListener = new OnFrameAvailableListener() {
+        @Override
+        public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+            Long imageTimestamp = Long.valueOf(surfaceTexture.getTimestamp());
+
+        }
+    };
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
@@ -166,7 +243,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
     }
 
     void cacPreviewSize( final int width, final int height ) {
-        CameraManager manager = (CameraManager)mSurfaceView.getContext().getSystemService(Context.CAMERA_SERVICE);
+        CameraManager manager = (CameraManager)mSurfaceTextureView.getContext().getSystemService(Context.CAMERA_SERVICE);
         try {
             for (String cameraID : manager.getCameraIdList()) {
                 CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraID);
@@ -195,7 +272,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
     }
 
     void openCamera() {
-        CameraManager manager = (CameraManager)mSurfaceView.getContext().getSystemService(Context.CAMERA_SERVICE);
+        CameraManager manager = (CameraManager)mSurfaceTextureView.getContext().getSystemService(Context.CAMERA_SERVICE);
         // System.out.println("Acquired manager");
         try {
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(mCameraID);
@@ -237,6 +314,73 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
         }
     }
 
+    private final CaptureCallback mCaptureCallback = new CaptureCallback() {
+        private void process(CaptureResult result) {
+            Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+
+//            switch (aeState) {
+//                case STATE_PREVIEW: {
+//                    // Continuously taking pictures
+//                    if(mCaptureSession != null)
+//                        lockFocus();
+//                    break;
+//                }
+//                case STATE_WAITING_LOCK: {
+//                    int afState = result.get(CaptureResult.CONTROL_AF_STATE);
+//                    if(CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState ||
+//                            CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState) {
+//                        // CONTROL_AE_STATE can be null on some devices
+//                        if(aeState == null || aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED) {
+//                            mState = STATE_WAITING_NON_PRECAPTURE;
+//                            captureStillPicture();
+//                        } else {
+//                            runPrecaptureSequence();
+//                        }
+//                    }
+//                    break;
+//                }
+//                case STATE_WAITING_PRECAPTURE: {
+//                    // CONTROL_AE_STATE can be null on some devices
+//                    if(aeState == null || aeState == CaptureResult.CONTROL_AE_STATE_PRECAPTURE ||
+//                            aeState == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED) {
+//                        mState = STATE_WAITING_NON_PRECAPTURE;
+//                    }
+//                    break;
+//                }
+//                case STATE_WAITING_NON_PRECAPTURE: {
+//                    // CONTROL_AE_STATE can be null on some devices
+//                    if(aeState == null || aeState != CaptureResult.CONTROL_AE_STATE_PRECAPTURE) {
+//                        mState = STATE_PICTURE_TAKEN;
+//                        captureStillPicture();
+//                    }
+//                    break;
+//                }
+//            }
+            System.out.println("XNXX Processing : " + aeState);
+
+        }
+
+        @Override
+        public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request,
+                                        CaptureResult partialResult) {
+            process(partialResult);
+        }
+
+        @Override
+        public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request,
+                                       TotalCaptureResult result) {
+            process(result);
+
+            List<CaptureResult.Key<?>> rKeys = result.getKeys();
+            Iterator<CaptureResult.Key<?>> it1 = rKeys.iterator();
+            while (it1.hasNext()) {
+                CaptureResult.Key<?> current = it1.next();
+                System.out.println("XNXX TOTAL RESULT" + current.getName());
+            }
+
+
+        }
+    };
 
     private final CameraDevice.StateCallback mStateCallback = new CameraDevice.StateCallback() {
         @Override
@@ -270,9 +414,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
          //   Surface surface = new Surface(mSTexture);
 
             mPreviewRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-            mPreviewRequestBuilder.addTarget(mSurfaceView.getHolder().getSurface());
-
-            mCameraDevice.createCaptureSession(Arrays.asList(mSurfaceView.getHolder().getSurface()),
+            //mPreviewRequestBuilder.addTarget(mSurfaceTextureView.getSurfaceTexture().get);
+           // mPreviewRequestBuilder.addTarget(mSurfaceView.getHolder().getSurface());
+            surface = new Surface(mSurfaceTexture);
+            mPreviewRequestBuilder.addTarget(surface);
+            mCameraDevice.createCaptureSession(Arrays.asList(surface),
                     new CameraCaptureSession.StateCallback() {
                         private void process (CaptureResult result)
                         {
@@ -288,7 +434,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
                             try {
                                 mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
                                 mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
-                                mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(), null, mBackgroundHandler);
+                                mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(), mCaptureCallback, mBackgroundHandler);
                             } catch (CameraAccessException e) {
                                 Log.e("mr", "createCaptureSession");
                             }

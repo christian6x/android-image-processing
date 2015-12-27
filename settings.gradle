@@ -1,1 +1,2 @@
-include ':androidimageprocessing'
+include ':androidimageprocessing', ':app'
+include ':openCVLibrary310'
