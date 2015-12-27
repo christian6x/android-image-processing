@@ -123,6 +123,54 @@
                 android:id="@+id/switch5"
                 android:layout_column="1" />
         </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"></TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"></TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"></TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <EditText
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:ems="10"
+                android:id="@+id/editText"
+                android:layout_column="1"
+                android:autoText="false"
+                android:editable="true"
+                android:enabled="false"
+                android:numeric="integer"
+                android:text="480" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <EditText
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:ems="10"
+                android:id="@+id/editText2"
+                android:layout_column="1"
+                android:autoText="false"
+                android:editable="true"
+                android:enabled="false"
+                android:numeric="integer"
+                android:text="640" />
+        </TableRow>
     </TableLayout>
 
 

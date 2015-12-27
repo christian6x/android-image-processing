@@ -31,6 +31,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Switch;
 
 
@@ -58,7 +59,7 @@ import renderer.MainRenderer;
 //    }
 //}
 
-public class MainActivity extends Activity implements SurfaceHolder.Callback{
+public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     private SurfaceView mSurfaceView;
     private SurfaceTexture mSurfaceTexture;     // Texture view dla openGL
@@ -71,7 +72,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
     private CameraCaptureSession mCaptureSession;
     private CameraDevice mCameraDevice;
     private String mCameraID;
-    private Size mPreviewSize = new Size ( 1920, 1080 );
+    private Size mPreviewSize = new Size(1920, 1080);
     private CaptureRequest.Builder mPreviewRequestBuilder;
     private Handler mBackgroundHandler;
     private Surface surface;
@@ -84,21 +85,21 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
 
 
     @Override
-    protected void onCreate(Bundle savedInstanceState)
-    {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-       // mSurfaceView = (SurfaceView) findViewById(R.id.surfaceView);
+        // mSurfaceView = (SurfaceView) findViewById(R.id.surfaceView);
         //getFragmentManager().beginTransaction().add(R.id.Fra, new CameraViewFragment()).commit();
-      //  mCameraFragment = getFragmentManager().findFragmentById(R.layout.camera_view_fragment);
+        //  mCameraFragment = getFragmentManager().findFragmentById(R.layout.camera_view_fragment);
         //final CameraViewFragment mCameraFragment = (CameraViewFragment) getFragmentManager().findFragmentById(R.id.fragment);
         final CameraViewFragment2 mCameraFragment = (CameraViewFragment2) getFragmentManager().findFragmentById(R.id.fragment);
-      //  fragment.<specific_function_name>();
+        //  fragment.<specific_function_name>();
         //    mSurfaceTexture = ()
         mCameraButton = (Button) findViewById(R.id.button);
 
         mResizeSwitch = false;
 
+        EditText eHeight = (EditText) findViewById(R.id.editText);
 
         findViewById(R.id.switch1).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -123,7 +124,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
             @Override
             public void onClick(View v) {
                 mSobelSwitch = !mSobelSwitch;
-                mCameraFragment.runUpdateState("SOBEL",mSobelSwitch);
+                mCameraFragment.runUpdateState("SOBEL", mSobelSwitch);
             }
         });
 
@@ -132,16 +133,16 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
             @Override
             public void onClick(View v) {
                 mCannySwitch = !mCannySwitch;
-                mCameraFragment.runUpdateState("CANNY",mCannySwitch);
+                mCameraFragment.runUpdateState("CANNY", mCannySwitch);
             }
         });
-        
+
         mDilateSwitch = false;
         findViewById(R.id.switch5).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 mDilateSwitch = !mDilateSwitch;
-                mCameraFragment.runUpdateState("DILATE",mDilateSwitch);
+                mCameraFragment.runUpdateState("DILATE", mDilateSwitch);
             }
         });
 
@@ -190,14 +191,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
 //        mSurfaceTextureHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 
 
-      //  mSurfaceTexture.setOnFrameAvailableListener(mFrameAvailableListener);
+        //  mSurfaceTexture.setOnFrameAvailableListener(mFrameAvailableListener);
 
         mCameraButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 // Opening/closing camera
-                if (!mCameraState)
-                {
+                if (!mCameraState) {
                     //Point ss = new Point();
                     //mSurfaceView.getDisplay().getRealSize(ss);
                     //mSurfaceView.getHeight();
@@ -206,11 +206,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
                     mCameraFragment.openCamera();
                     //cacPreviewSize(mSurfaceTextureView.getWidth(), mSurfaceTextureView.getHeight());
                     //openCamera();
-                }
-                else
-                {
+                } else {
                     closeCamera();
-                   // mSurfaceView.getHolder().getSurfaceFrame().setEmpty();
+                    // mSurfaceView.getHolder().getSurfaceFrame().setEmpty();
                 }
                 mCameraState = !mCameraState;
             }
@@ -242,8 +240,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
 
     }
 
-    void cacPreviewSize( final int width, final int height ) {
-        CameraManager manager = (CameraManager)mSurfaceTextureView.getContext().getSystemService(Context.CAMERA_SERVICE);
+    void cacPreviewSize(final int width, final int height) {
+        CameraManager manager = (CameraManager) mSurfaceTextureView.getContext().getSystemService(Context.CAMERA_SERVICE);
         try {
             for (String cameraID : manager.getCameraIdList()) {
                 CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraID);
@@ -253,26 +251,26 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
 
                 mCameraID = cameraID;
                 StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-                for ( Size psize : map.getOutputSizes(SurfaceTexture.class)) {
+                for (Size psize : map.getOutputSizes(SurfaceTexture.class)) {
                     //System.out.println("Rozmiar : " + psize.getWidth() + "\nwidth : " + width + "\nheight : " + height);
-                    if ( width == psize.getWidth() && height == psize.getHeight() ) {
+                    if (width == psize.getWidth() && height == psize.getHeight()) {
                         mPreviewSize = psize;
                         break;
                     }
                 }
                 break;
             }
-        } catch ( CameraAccessException e ) {
+        } catch (CameraAccessException e) {
             Log.e("mr", "cacPreviewSize - Camera Access Exception");
-        } catch ( IllegalArgumentException e ) {
+        } catch (IllegalArgumentException e) {
             Log.e("mr", "cacPreviewSize - Illegal Argument Exception");
-        } catch ( SecurityException e ) {
+        } catch (SecurityException e) {
             Log.e("mr", "cacPreviewSize - Security Exception");
         }
     }
 
     void openCamera() {
-        CameraManager manager = (CameraManager)mSurfaceTextureView.getContext().getSystemService(Context.CAMERA_SERVICE);
+        CameraManager manager = (CameraManager) mSurfaceTextureView.getContext().getSystemService(Context.CAMERA_SERVICE);
         // System.out.println("Acquired manager");
         try {
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(mCameraID);
@@ -280,15 +278,15 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
 
                 throw new RuntimeException("Time out waiting to lock camera opening.");
             }
-           // mCameraID.
-            manager.openCamera(mCameraID,mStateCallback,mBackgroundHandler);
+            // mCameraID.
+            manager.openCamera(mCameraID, mStateCallback, mBackgroundHandler);
 
 
-        } catch ( IllegalArgumentException e ) {
+        } catch (IllegalArgumentException e) {
             Log.e("mr", "OpenCamera - Illegal Argument Exception");
-        } catch ( SecurityException e ) {
+        } catch (SecurityException e) {
             Log.e("mr", "OpenCamera - Security Exception");
-        } catch ( InterruptedException e ) {
+        } catch (InterruptedException e) {
             Log.e("mr", "OpenCamera - Interrupted Exception");
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -409,22 +407,22 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
 
     private void createCameraPreviewSession() {
         try {
-          //  mSTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
+            //  mSTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
 
-         //   Surface surface = new Surface(mSTexture);
+            //   Surface surface = new Surface(mSTexture);
 
             mPreviewRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             //mPreviewRequestBuilder.addTarget(mSurfaceTextureView.getSurfaceTexture().get);
-           // mPreviewRequestBuilder.addTarget(mSurfaceView.getHolder().getSurface());
+            // mPreviewRequestBuilder.addTarget(mSurfaceView.getHolder().getSurface());
             surface = new Surface(mSurfaceTexture);
             mPreviewRequestBuilder.addTarget(surface);
             mCameraDevice.createCaptureSession(Arrays.asList(surface),
                     new CameraCaptureSession.StateCallback() {
-                        private void process (CaptureResult result)
-                        {
+                        private void process(CaptureResult result) {
                             System.out.println("Processsssss");
 
                         }
+
                         @Override
                         public void onConfigured(CameraCaptureSession cameraCaptureSession) {
                             if (null == mCameraDevice)
@@ -439,6 +437,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
                                 Log.e("mr", "createCaptureSession");
                             }
                         }
+
                         @Override
                         public void onConfigureFailed(CameraCaptureSession cameraCaptureSession) {
                         }
@@ -451,16 +450,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback{
     }
 
 }
-
-
-
-
-
-
-
-
-
-
 
 
 //public class My extends Activity {

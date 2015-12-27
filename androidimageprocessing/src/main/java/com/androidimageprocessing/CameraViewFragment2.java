@@ -40,11 +40,13 @@ import android.widget.ImageView;
 
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
+import org.opencv.core.Core;
 import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
 import org.opencv.core.Point;
+import org.opencv.core.Scalar;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
@@ -582,6 +584,8 @@ public class CameraViewFragment2 extends Fragment {
     private class RenderingThread extends Thread {
         private final TextureView mSurface;
         private volatile boolean mRunning = true;
+        protected volatile int downScaleWidth = 480;
+        protected volatile int downScaleHeight = 480;
         protected volatile boolean mResize = false;
         protected volatile boolean mNormalize = false;
         protected volatile boolean mDilate = false;
@@ -627,7 +631,7 @@ public class CameraViewFragment2 extends Fragment {
 
         private int GetNewColor(int c)
         {
-            double dwhite=GetColorDistance(c,Color.WHITE);
+            double dwhite=GetColorDistance(c, Color.WHITE);
             double dblack=GetColorDistance(c,Color.BLACK);
 
             if(dwhite<=dblack)
@@ -709,17 +713,58 @@ public class CameraViewFragment2 extends Fragment {
         /*
             OpenCV SOBEL
          */
+
         private Bitmap OpenCVSobel(Bitmap bitmap)
         {
-            Mat mat = new Mat (bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8UC1);
+            Mat mSepiaKernel = new Mat(4, 4, CvType.CV_32F);
+            mSepiaKernel.put(0, 0, /* R */0.189f, 0.769f, 0.393f, 0f);
+            mSepiaKernel.put(1, 0, /* G */0.168f, 0.686f, 0.349f, 0f);
+            mSepiaKernel.put(2, 0, /* B */0.131f, 0.534f, 0.272f, 0f);
+            mSepiaKernel.put(3, 0, /* A */0.000f, 0.000f, 0.000f, 1f);
+            Mat mat = new Mat(bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8UC1);
             Utils.bitmapToMat(bitmap, mat);
-            Mat mat2 = mat;
+            Mat mat2 = new Mat(bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8UC1);
+            Bitmap rBitmap = Bitmap.createBitmap(mat2.cols(), mat2.rows(), Bitmap.Config.ARGB_8888);
+            String s = "";
 
-
+          //  Core.transform(mat, mat, mSepiaKernel);
             Imgproc.Sobel(mat, mat2, CvType.CV_8UC1, 1, 1);
-            bitmap.setHasAlpha(false);
-            Utils.matToBitmap(mat2, bitmap);
-            return bitmap;
+//
+//                for (int k = 1; k < mat2.rows(); k++) {
+//                    for (int j = 1; j < mat2.cols(); j++) {
+//                        double[] res = mat2.get(k, j);
+//                        if (res[3] == 255.0) {
+//                            for (int i = 0; i < res.length; i++) {
+//                                s += i;
+//                                s += " : ";
+//                                s += res[i];
+//                                s += " ";
+//
+//                            }
+//                            Log.d("LLLL", s);
+//                            s = "";
+//                        }
+//                    }
+//                }
+            // Utils.
+
+
+            Utils.matToBitmap(mat2, rBitmap);
+
+
+
+            Bitmap bmOverlay = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
+            Paint paint = new Paint();
+            paint.setColor(Color.BLACK);
+
+
+            Canvas canvas = new Canvas(bmOverlay);
+            canvas.drawPaint(paint);
+            canvas.drawBitmap(rBitmap, new Matrix(), null);
+           // canvas.drawBitmap(rBitmap, 0, 0, null);
+            //return bmOverlay;
+
+            return bmOverlay;
         }
 
         /*
@@ -771,6 +816,7 @@ public class CameraViewFragment2 extends Fragment {
 
             Paint paint = new Paint();
             paint.setColor(0xff00ff00);
+            //paint.setColor(Color.BLACK);
             long prevTime = 0;
             long currentTime = 0;
             long frameTime = 0;
@@ -790,7 +836,7 @@ public class CameraViewFragment2 extends Fragment {
                         Bitmap bitmap = BitmapFactory.decodeByteArray(WorkableImage.byteBuffer, 0, WorkableImage.byteBuffer.length);
                         bitmap = rotate(bitmap, 90);
                         if (mResize) {
-                            bitmap = Bitmap.createScaledBitmap(bitmap, 480, 640, false);
+                            bitmap = Bitmap.createScaledBitmap(bitmap, downScaleWidth, downScaleHeight, false);
                         }
 
                         if (mNormalize)
@@ -871,8 +917,9 @@ public class CameraViewFragment2 extends Fragment {
 //                            float t = 120 * -256f;
 //                            cm.set(new float[] { a, b, c, 0, t, a, b, c, 0, t, a, b, c, 0, t, 0, 0, 0, 1, 0 });
 //                            paint.setColorFilter(new ColorMatrixColorFilter(cm));
-
+                      //      canvas.drawPaint(paint);
                             canvas.drawBitmap(bitmap, 0, 0, paint);
+
 
 
                             canvas.drawText("TPS: " + frameTime, 0, 0,x + 80.0f, y + 80.0f, paint);
