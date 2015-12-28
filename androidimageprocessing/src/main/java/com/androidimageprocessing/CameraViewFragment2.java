@@ -29,6 +29,7 @@ import android.media.ImageReader;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.text.Editable;
 import android.util.Log;
 import android.util.Size;
 import android.view.LayoutInflater;
@@ -133,23 +134,73 @@ public class CameraViewFragment2 extends Fragment {
             }
         });
 
+        updateState.put("GAUSS", new CustomRunnable<Boolean>() {
+            @Override
+            public void run(Boolean arg1) {
+                mThread.mGauss = arg1;
+            }
+        });
+
+        updateState.put("GRAY", new CustomRunnable<Boolean>() {
+            @Override
+            public void run(Boolean arg1) {
+                mThread.mGray = arg1;
+            }
+        });
+
+        updateState.put("MCANNYMIN", new CustomRunnable<Integer>() {
+            @Override
+            public void run(Integer arg1) {
+                mThread.mCannyMin = arg1;
+            }
+        });
+
+        updateState.put("MCANNYMAX", new CustomRunnable<Integer>() {
+            @Override
+            public void run(Integer arg1) {
+                mThread.mCannyMax = arg1;
+            }
+        });
+
+        updateState.put("MCANNYOPT", new CustomRunnable<Integer>() {
+            @Override
+            public void run(Integer arg1) {
+                mThread.mCannyOpt = arg1;
+            }
+        });
+
+
     }
+
+
+
     protected volatile boolean mResize = false;
     protected volatile boolean mNormalize = false;
     protected volatile boolean mDilate = false;
     protected volatile boolean mCanny = false;
     protected volatile boolean mSobel = false;
 
+
+
     public void runUpdateState(String mode, boolean state)
     {
-        Log.i("UPDATEXXXX", mode + " to state : " + state);
         if (mCaptureSession != null)
             updateState.get(mode).run(state);
-        //updateState(mode,state).run();
-     //   mThread.m
-
-
     }
+
+
+    public void runUpdateState(String mode, double state)
+    {
+        if (mCaptureSession != null)
+            updateState.get(mode).run(state);
+    }
+
+    public void runUpdateState(String mode, int state)
+    {
+        if (mCaptureSession != null)
+            updateState.get(mode).run(state);
+    }
+
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -591,9 +642,17 @@ public class CameraViewFragment2 extends Fragment {
         protected volatile boolean mDilate = false;
         protected volatile boolean mCanny = false;
         protected volatile boolean mSobel = false;
+        protected volatile boolean mGauss = false;
+        protected volatile boolean mGray = false;
+        protected volatile double mCannyMin = 0.0;
+        protected volatile double mCannyMax = 0.0;
+        protected volatile int mCannyOpt = 0;
+
+
         protected volatile Image frame;
         public byte[] byteBuffor;
         public IX WorkableImage;
+
 
         public RenderingThread(TextureView surface) {
             mSurface = surface;
@@ -710,10 +769,39 @@ public class CameraViewFragment2 extends Fragment {
             return Bitmap.createBitmap(in, 0, 0, in.getWidth(), in.getHeight(), mat, true);
         }
 
+        /**
+         * OpenCV Gauss
+         * @param bitmap
+         * @return
+         */
+        private Bitmap OpenCVGauss(Bitmap bitmap)
+        {
+            Mat mat = new Mat(bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8UC1);
+            Utils.bitmapToMat(bitmap, mat);
+            Mat mat2 = mat;
+            Imgproc.GaussianBlur(mat, mat,new org.opencv.core.Size(45,45), 0);
+            Utils.matToBitmap(mat2, bitmap);
+            return bitmap;
+        }
+
+        /**
+         * OpenCV Gray
+         * TO-DO
+         * @param bitmap
+         * @return
+         */
+        private Bitmap OpenCVGray(Bitmap bitmap) {
+            Mat mat = new Mat(bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8UC1);
+            Utils.bitmapToMat(bitmap, mat);
+            Mat mat2 = mat;
+
+            Utils.matToBitmap(mat2, bitmap);
+            return bitmap;
+        }
+
         /*
             OpenCV SOBEL
          */
-
         private Bitmap OpenCVSobel(Bitmap bitmap)
         {
             Mat mSepiaKernel = new Mat(4, 4, CvType.CV_32F);
@@ -784,9 +872,12 @@ public class CameraViewFragment2 extends Fragment {
 
 
                     Mat element = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new  org.opencv.core.Size(2*erosion_size + 1, 2*erosion_size+1));
-                    Imgproc.erode(mat, mat2, element);
-                  //  Imgproc.Canny(mat, mat2, 200, 255);
-                    Log.i("CANNY", "SUCCESS");
+                    // Imgproc.erode(mat, mat2, element);
+                    Imgproc.cvtColor(mat,mat,Imgproc.COLOR_BGR2GRAY);
+
+                    Imgproc.Canny(mat, mat2, mCannyMin, mCannyMax, mCannyOpt, true);
+
+                    Log.i("CANNY", "SUCCESS" + "mCannyMin : " + mCannyMin + " mCannyMax : " + mCannyMax + " mCannyOpt : " + mCannyOpt);
                 }
                 //Imgproc.Laplacian(mat,mat,1);
 
@@ -800,7 +891,7 @@ public class CameraViewFragment2 extends Fragment {
             }
             catch (Exception e)
             {
-                Log.e("CANNY",e.getLocalizedMessage() + " : " + e.getMessage());
+                Log.e("CANNY", e.getLocalizedMessage() + " : " + e.getMessage() + "mCannyMin : " + mCannyMin + " mCannyMax : " + mCannyMax + " mCannyOpt : " + mCannyOpt);
                 e.printStackTrace();
 
             }
@@ -839,8 +930,13 @@ public class CameraViewFragment2 extends Fragment {
                             bitmap = Bitmap.createScaledBitmap(bitmap, downScaleWidth, downScaleHeight, false);
                         }
 
+
+
                         if (mNormalize)
                             bitmap = OpenCVNormalize(bitmap);
+
+                        if (mGray)
+                            bitmap = toGrayscale(bitmap);
 
 
                         //bitmap = GetBinaryBitmap(bitmap);
@@ -848,9 +944,15 @@ public class CameraViewFragment2 extends Fragment {
 
                         bitmap = OpenCVDetectSquares(bitmap);
 
+                        if (mGauss)
+                            bitmap = OpenCVGauss(bitmap);
 
                         if (mSobel)
                             bitmap = OpenCVSobel(bitmap);
+
+
+              //          Imgproc.
+
 
 //
 //
@@ -922,7 +1024,7 @@ public class CameraViewFragment2 extends Fragment {
 
 
 
-                            canvas.drawText("TPS: " + frameTime, 0, 0,x + 80.0f, y + 80.0f, paint);
+                            canvas.drawText("TPS: ", 0, 0,x + 80.0f, y + 80.0f, paint);
 
                            // canvas.drawRect(x, y, x + 20.0f, y + 20.0f, paint);
 
@@ -971,6 +1073,7 @@ public class CameraViewFragment2 extends Fragment {
                 }
             }
         }
+
 
 
 

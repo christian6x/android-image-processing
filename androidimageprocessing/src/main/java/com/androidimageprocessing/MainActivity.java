@@ -19,7 +19,7 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.ImageReader;
 import android.os.Handler;
-import android.support.v7.app.AppCompatActivity;
+//import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Size;
@@ -82,6 +82,15 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private boolean mSobelSwitch;
     private boolean mCannySwitch;
     private boolean mDilateSwitch;
+    private boolean mGaussianSwitch;
+    private boolean mGrayscaleSwitch;
+    private double mCannyMin;
+    private double mCannyMax;
+    private int mCannyOpt;
+    private EditText mCannyEditMin;
+    private EditText mCannyEditMax;
+    private EditText mCannyEditOpt;
+    private Button mCameraButton2;
 
 
     @Override
@@ -97,9 +106,16 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         //    mSurfaceTexture = ()
         mCameraButton = (Button) findViewById(R.id.button);
 
+        mCameraButton2 = (Button) findViewById(R.id.button2);
+
         mResizeSwitch = false;
 
         EditText eHeight = (EditText) findViewById(R.id.editText);
+
+        mCannyEditMin = (EditText) findViewById(R.id.editText3);
+        mCannyEditMax = (EditText) findViewById(R.id.editText4);
+        mCannyEditOpt = (EditText) findViewById(R.id.editText5);
+
 
         findViewById(R.id.switch1).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -145,6 +161,96 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 mCameraFragment.runUpdateState("DILATE", mDilateSwitch);
             }
         });
+
+        mGaussianSwitch = false;
+        findViewById(R.id.switch6).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mGaussianSwitch = !mGaussianSwitch;
+                mCameraFragment.runUpdateState("GAUSS", mGaussianSwitch);
+            }
+        });
+
+        mGrayscaleSwitch = false;
+        findViewById(R.id.switch7).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mGrayscaleSwitch = !mGrayscaleSwitch;
+                mCameraFragment.runUpdateState("GRAY", mGrayscaleSwitch);
+            }
+        });
+
+
+//        mCameraButton2.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                int val = Integer.parseInt(mCannyEditMin.getText().toString());
+//                mCameraFragment.runUpdateState("MCANNYMIN", val);
+//
+//
+//            }
+//        });
+
+        mCannyMin = 0.0;
+        mCameraButton2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                int val = Integer.parseInt(mCannyEditMin.getText().toString());
+                mCameraFragment.runUpdateState("MCANNYMIN", val);
+                val = Integer.parseInt(mCannyEditMax.getText().toString());
+                mCameraFragment.runUpdateState("MCANNYMAX", val);
+                val = Integer.parseInt(mCannyEditOpt.getText().toString());
+                mCameraFragment.runUpdateState("MCANNYOPT", val);
+
+            }
+        });
+
+
+
+
+//        findViewById(R.id.switch7).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                mCameraFragment.runUpdateState("MCANNYMIN", mCannyMin);
+//            }
+//        });
+
+//        mCannyMax = 0.0;
+//
+//        mCannyEditMax.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//
+//                int val = Integer.parseInt(mCannyEditMax.getText().toString());
+//
+//                mCameraFragment.runUpdateState("MCANNYMAX", val);
+//            }
+//        });
+
+//        findViewById(R.id.switch7).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                mCameraFragment.runUpdateState("MCANNYMAX", mCannyMax);
+//            }
+//        });
+
+//
+//
+//        mCannyOpt = 0;
+//        mCannyEditOpt.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                int val = Integer.parseInt(mCannyEditOpt.getText().toString());
+//                mCameraFragment.runUpdateState("MCANNYOPT", val);
+//            }
+//        });
+//        findViewById(R.id.switch7).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                mCameraFragment.runUpdateState("MCANNYOPT", mCannyOpt);
+//            }
+//        });
+
 
 //        mSurfaceHolder = mSurfaceView .getHolder();
 //        mSurfaceHolder.addCallback(this);
