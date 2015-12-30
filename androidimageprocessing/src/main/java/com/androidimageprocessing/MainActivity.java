@@ -3,7 +3,11 @@ package com.androidimageprocessing;
 import android.app.Activity;
 import android.app.Fragment;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.ImageFormat;
+import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.SurfaceTexture;
 import android.graphics.SurfaceTexture.OnFrameAvailableListener;
@@ -32,6 +36,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.SeekBar;
 import android.widget.Switch;
 
 
@@ -59,6 +64,7 @@ import renderer.MainRenderer;
 //    }
 //}
 
+@SuppressWarnings("ALL")
 public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     private SurfaceView mSurfaceView;
@@ -91,7 +97,18 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private EditText mCannyEditMax;
     private EditText mCannyEditOpt;
     private Button mCameraButton2;
-
+    private EditText mHeight;
+    private EditText mWidth;
+    private BitmapProcessQueue mProcessList = new BitmapProcessQueue();
+    private Button mClearButton;
+    private SeekBar mThresholdSeekBar;
+    private int mThresholdSeekValue;
+    private int mHoughSeekValue;
+    private SeekBar mHoughSeekBar;
+    private int mLineHeight;
+    private int mLineGap;
+    private SeekBar mLineHeightBar;
+    private SeekBar mLineGapBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,14 +125,98 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         mCameraButton2 = (Button) findViewById(R.id.button2);
 
+        mClearButton = (Button) findViewById(R.id.button7);
+
         mResizeSwitch = false;
 
-        EditText eHeight = (EditText) findViewById(R.id.editText);
+        mHeight = (EditText) findViewById(R.id.editText);
+        mWidth = (EditText) findViewById(R.id.editText);
 
         mCannyEditMin = (EditText) findViewById(R.id.editText3);
         mCannyEditMax = (EditText) findViewById(R.id.editText4);
         mCannyEditOpt = (EditText) findViewById(R.id.editText5);
 
+        mThresholdSeekValue = 0;
+        mThresholdSeekBar = (SeekBar) findViewById(R.id.seekBar);
+
+        mHoughSeekValue = 0;
+        mHoughSeekBar = (SeekBar) findViewById(R.id.seekBar2);
+
+        mLineHeight = 0;
+        mLineGap = 0;
+
+        mLineHeightBar = (SeekBar) findViewById(R.id.seekBar3);
+        mLineGapBar = (SeekBar) findViewById(R.id.seekBar4);
+
+        mThresholdSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                mThresholdSeekValue = progress;
+                drawOnButton((Button) findViewById(R.id.button10),"THRESHOLD" ,String.valueOf(progress));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+
+        mHoughSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                mHoughSeekValue = progress;
+                drawOnButton((Button) findViewById(R.id.button11),"HOUGH" ,String.valueOf(progress));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+
+        mLineHeightBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                mLineHeight = progress;
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+
+        mLineGapBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                mLineGap = progress;
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
 
         findViewById(R.id.switch1).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -125,60 +226,63 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             }
         });
 
-        mNormalizeSwitch = false;
 
-        findViewById(R.id.switch2).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mNormalizeSwitch = !mNormalizeSwitch;
-                mCameraFragment.runUpdateState("NORMALIZE", mNormalizeSwitch);
-            }
-        });
 
-        mSobelSwitch = false;
-        findViewById(R.id.switch3).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mSobelSwitch = !mSobelSwitch;
-                mCameraFragment.runUpdateState("SOBEL", mSobelSwitch);
-            }
-        });
+//        mNormalizeSwitch = false;
+//
+//        findViewById(R.id.switch2).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                mNormalizeSwitch = !mNormalizeSwitch;
+//                mCameraFragment.runUpdateState("NORMALIZE", mNormalizeSwitch);
+//            }
+//        });
+//
+//        mSobelSwitch = false;
+//        findViewById(R.id.switch3).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                mSobelSwitch = !mSobelSwitch;
+//                mCameraFragment.runUpdateState("SOBEL", mSobelSwitch);
+//            }
+//        });
+//
+//        mCannySwitch = false;
+//        findViewById(R.id.switch4).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                mCannySwitch = !mCannySwitch;
+//                mCameraFragment.runUpdateState("CANNY", mCannySwitch);
+//            }
+//        });
+//
+//        mDilateSwitch = false;
+//        findViewById(R.id.switch5).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                mDilateSwitch = !mDilateSwitch;
+//                mCameraFragment.runUpdateState("DILATE", mDilateSwitch);
+//            }
+//        });
+//
+//        mGaussianSwitch = false;
+//        findViewById(R.id.switch6).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                mGaussianSwitch = !mGaussianSwitch;
+//                mCameraFragment.runUpdateState("GAUSS", mGaussianSwitch);
+//            }
+//        });
+//
+//        mGrayscaleSwitch = false;
+//        findViewById(R.id.switch7).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                mGrayscaleSwitch = !mGrayscaleSwitch;
+//                mCameraFragment.runUpdateState("GRAY", mGrayscaleSwitch);
+//            }
+//        });
 
-        mCannySwitch = false;
-        findViewById(R.id.switch4).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mCannySwitch = !mCannySwitch;
-                mCameraFragment.runUpdateState("CANNY", mCannySwitch);
-            }
-        });
-
-        mDilateSwitch = false;
-        findViewById(R.id.switch5).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mDilateSwitch = !mDilateSwitch;
-                mCameraFragment.runUpdateState("DILATE", mDilateSwitch);
-            }
-        });
-
-        mGaussianSwitch = false;
-        findViewById(R.id.switch6).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mGaussianSwitch = !mGaussianSwitch;
-                mCameraFragment.runUpdateState("GAUSS", mGaussianSwitch);
-            }
-        });
-
-        mGrayscaleSwitch = false;
-        findViewById(R.id.switch7).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mGrayscaleSwitch = !mGrayscaleSwitch;
-                mCameraFragment.runUpdateState("GRAY", mGrayscaleSwitch);
-            }
-        });
 
 
 //        mCameraButton2.setOnClickListener(new View.OnClickListener() {
@@ -191,6 +295,183 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 //            }
 //        });
 
+
+        findViewById(R.id.button3).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mProcessList.add(new BitmapProcessInterface() {
+                    @Override
+                    public Bitmap process(Bitmap bitmap) {
+                        // bitmap = BitmapProcess.OpenCVNormalize(bitmap);
+                        // BitmapProcess.normalize(bitmap);
+                        return BitmapProcess.OpenCVNormalize(bitmap);
+                    }
+
+                    @Override
+                    public BitmapMat process(BitmapMat bitmapMat) {
+                        return null;
+                    }
+                });
+            }
+        });
+
+        findViewById(R.id.button4).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mProcessList.add(new BitmapProcessInterface() {
+                    @Override
+                    public Bitmap process(Bitmap bitmap) {
+                        return BitmapProcess.OpenCVGray(bitmap);
+                    }
+
+                    @Override
+                    public BitmapMat process(BitmapMat bitmapMat) {
+                        return null;
+                    }
+                });
+            }
+        });
+
+        findViewById(R.id.button5).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mProcessList.add(new BitmapProcessInterface() {
+                    @Override
+                    public Bitmap process(Bitmap bitmap) {
+                        return BitmapProcess.OpenCVSobel(bitmap);
+                    }
+
+                    @Override
+                    public BitmapMat process(BitmapMat bitmapMat) {
+                        return null;
+                    }
+                });
+            }
+        });
+
+        findViewById(R.id.button6).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mProcessList.add(new BitmapProcessInterface() {
+                    @Override
+                    public Bitmap process(Bitmap bitmap) {
+                        return BitmapProcess.OpenCVCanny(bitmap, (int) mCannyMin, (int) mCannyMax, (int) mCannyOpt);
+                    }
+
+                    @Override
+                    public BitmapMat process(BitmapMat bitmapMat) {
+                        return null;
+                    }
+                });
+            }
+        });
+
+        findViewById(R.id.button8).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mProcessList.add(new BitmapProcessInterface() {
+                    @Override
+                    public Bitmap process(Bitmap bitmap) {
+                        return BitmapProcess.OpenCVDilate(bitmap);
+                    }
+
+                    @Override
+                    public BitmapMat process(BitmapMat bitmapMat) {
+                        return null;
+                    }
+                });
+            }
+        });
+
+        findViewById(R.id.button9).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mProcessList.add(new BitmapProcessInterface() {
+                    @Override
+                    public Bitmap process(Bitmap bitmap) {
+                        return BitmapProcess.OpenCVMedian(bitmap);
+                    }
+
+                    @Override
+                    public BitmapMat process(BitmapMat bitmapMat) {
+                        return null;
+                    }
+                });
+            }
+        });
+
+        findViewById(R.id.button10).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mProcessList.add(new BitmapProcessInterface() {
+                    @Override
+                    public Bitmap process(Bitmap bitmap) {
+                        return BitmapProcess.OpenCVThreshold(bitmap, mThresholdSeekValue);
+                    }
+
+                    @Override
+                    public BitmapMat process(BitmapMat bitmap) {
+
+                        return BitmapProcess.OpenCVThreshold(bitmap, mThresholdSeekValue);
+                    }
+                });
+            }
+        });
+
+
+
+        findViewById(R.id.button11).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mProcessList.add(new BitmapProcessInterface() {
+                    @Override
+                    public Bitmap process(Bitmap bitmap) {
+                        return BitmapProcess.OpenCVHoughLines(bitmap, mHoughSeekValue, mLineHeight, mLineGap);
+                    }
+
+                    @Override
+                    public BitmapMat process(BitmapMat bitmapMat) {
+                        return null;
+                    }
+                });
+            }
+        });
+
+        findViewById(R.id.button12).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mProcessList.add(new BitmapProcessInterface() {
+                    @Override
+                    public Bitmap process(Bitmap bitmap) {
+                        return BitmapProcess.OpenCVFindCountours(bitmap);
+                    }
+
+                    @Override
+                    public BitmapMat process(BitmapMat bitmapMat) {
+                        return null;
+                    }
+                });
+            }
+        });
+
+
+        mClearButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                int val = 10;
+//                mCannyEditMin.setText(val);
+//                val = 100;
+//                mCannyEditMax.setText(val);
+//                val = 3;
+//                mCannyEditOpt.setText(val);
+//                val = 640;
+//                mHeight.setText(val);
+//                val = 480;
+//                mWidth.setText(val);
+                mProcessList.clear();
+            }
+        });
+
         mCannyMin = 0.0;
         mCameraButton2.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -201,11 +482,19 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 mCameraFragment.runUpdateState("MCANNYMAX", val);
                 val = Integer.parseInt(mCannyEditOpt.getText().toString());
                 mCameraFragment.runUpdateState("MCANNYOPT", val);
+                val = Integer.parseInt(mHeight.getText().toString());
+                mCameraFragment.runUpdateState("MHEIGHT", val);
+                val = Integer.parseInt(mWidth.getText().toString());
+                mCameraFragment.runUpdateState("MWIDTH", val);
+                //
+                BitmapProcessQueue ddf = new BitmapProcessQueue();
+                ddf = (BitmapProcessQueue) mProcessList.clone();
 
+                mCameraFragment.runUpdateState("PROCESSLIST",ddf);
+                int mSize = mProcessList.size();
+                Log.i("SIZE", String.valueOf(mSize));
             }
         });
-
-
 
 
 //        findViewById(R.id.switch7).setOnClickListener(new View.OnClickListener() {
@@ -321,6 +610,22 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         });
     }
+
+
+    private void drawOnButton(Button button,String original ,String text)
+    {
+        String currentText = (String) button.getText();
+        if(text.isEmpty())
+        {
+            button.setText(original);
+        }
+        else {
+            button.setText(original + ":" + text);
+        }
+
+    }
+
+
 
 
     private OnFrameAvailableListener mFrameAvailableListener = new OnFrameAvailableListener() {
@@ -481,8 +786,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 CaptureResult.Key<?> current = it1.next();
                 System.out.println("XNXX TOTAL RESULT" + current.getName());
             }
-
-
         }
     };
 

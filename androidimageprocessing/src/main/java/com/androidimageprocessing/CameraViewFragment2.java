@@ -15,6 +15,7 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.Shader;
 import android.graphics.SurfaceTexture;
+import android.graphics.YuvImage;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -33,11 +34,13 @@ import android.text.Editable;
 import android.util.Log;
 import android.util.Size;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import org.opencv.core.*;
 
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
@@ -46,11 +49,14 @@ import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
+import org.opencv.core.MatOfPoint;
 import org.opencv.core.Point;
+import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -93,6 +99,10 @@ public class CameraViewFragment2 extends Fragment {
             Log.i("OPENCV","Initialization succeded");
         }
     }
+
+    private Handler mBackgroundHandler2;
+    private HandlerThread mBackgroundThread2;
+
 
     public interface CustomRunnable<T> {
         void run(T arg1);
@@ -169,7 +179,25 @@ public class CameraViewFragment2 extends Fragment {
             }
         });
 
+        updateState.put("MHEIGHT", new CustomRunnable<Integer>() {
+            @Override
+            public void run(Integer arg1) {
+                mThread.downScaleHeight = arg1;
+            }
+        });
 
+        updateState.put("MWIDTH", new CustomRunnable<Integer>() {
+            @Override
+            public void run(Integer arg1) {
+                mThread.downScaleWidth = arg1;
+            }
+        });
+        updateState.put("PROCESSLIST", new CustomRunnable<BitmapProcessQueue>() {
+            @Override
+            public void run(BitmapProcessQueue arg1) {
+                mThread.mProcessList = arg1;
+            }
+        });
     }
 
 
@@ -201,6 +229,10 @@ public class CameraViewFragment2 extends Fragment {
             updateState.get(mode).run(state);
     }
 
+    public void runUpdateState(String mode, BitmapProcessQueue mProcessList) {
+        if (mCaptureSession != null)
+            updateState.get(mode).run(mProcessList);
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -208,16 +240,24 @@ public class CameraViewFragment2 extends Fragment {
         View view = inflater.inflate(R.layout.camera_view_frame_fragment,
                 container, false);
         // Pobieram widok textury
-        mBackgroundThread = new HandlerThread("background");
+        mBackgroundThread = new HandlerThread("background3");
         mBackgroundThread.start();
 
         mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
 
+
+        mBackgroundThread2 = new HandlerThread("background2");
+        mBackgroundThread2.start();
+
+        mBackgroundHandler2 = new Handler(mBackgroundThread2.getLooper());
+
+
+
+
         mBitmapTextureView = (TextureView) view.findViewById(R.id.textureView3);
         mBitmapTextureView.setWillNotDraw(false);
         mBitmapTextureView.setOpaque(false);
-        mBitmapTextureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener()
-        {
+        mBitmapTextureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
             @Override
             public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
                 mBitmapSurfaceTexture = surface;
@@ -236,6 +276,18 @@ public class CameraViewFragment2 extends Fragment {
             @Override
             public void onSurfaceTextureUpdated(SurfaceTexture surface) {
 
+            }
+        });
+
+
+        mBitmapTextureView.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                int xPos = (int) v.getX();
+                int yPos = (int) v.getY();
+                Log.i("BITMAP", "Click position. " + "X : " + xPos + " Y : " + yPos + " LEFT : " + v.getLeft() + " RIGHT : " + v.getRight() + " RAW X : " + event.getX() + "RAW Y : " + event.getY() + " TIME " );
+
+                return false;
             }
         });
 
@@ -268,16 +320,17 @@ public class CameraViewFragment2 extends Fragment {
         return view;
     }
 
-    public void openCamera()
-    {
-        Log.i("RUN","PREVIEWSIZE " + mSurfaceTextureView.getWidth() + " : " + mSurfaceTextureView.getHeight());
+    public void openCamera() {
+        Log.i("RUN", "PREVIEWSIZE " + mSurfaceTextureView.getWidth() + " : " + mSurfaceTextureView.getHeight());
         cacPreviewSize(mSurfaceTextureView.getWidth(), mSurfaceTextureView.getHeight());
         startCameraPreview();
         mThread = new RenderingThread(mBitmapTextureView);
         mThread.start();
 
-        mPreviewThread = new PreviewThread(surface);
-        mPreviewThread.start();
+
+
+        //mPreviewThread = new PreviewThread(surface);
+        //mPreviewThread.start();
     }
 
     public void closeCamera() {
@@ -330,10 +383,6 @@ public class CameraViewFragment2 extends Fragment {
                 if (characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT)
                     continue;
 
-                mCaptureBuffer = ImageReader.newInstance(mSurfaceTextureView.getWidth(),
-                        mSurfaceTextureView.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
-                //   mCaptureBuffer.setOnImageAvailableListener(
-                //           mImageCaptureListener, mBackgroundHandler);
                 mCameraID = cameraID;
                 StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
                 for ( Size psize : map.getOutputSizes(SurfaceTexture.class)) {
@@ -363,22 +412,38 @@ public class CameraViewFragment2 extends Fragment {
             mPreviewRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             //mPreviewRequestBuilder.addTarget(mSurfaceTextureView.getSurfaceTexture().get);
             // mPreviewRequestBuilder.addTarget(mSurfaceView.getHolder().getSurface());
-            surface = new Surface(mSurfaceTexture);
+
+
+
 
             //    mCaptureBuffer = ImageReader.newInstance(640, 480, ImageFormat.JPEG, /*maxImages*/2);
             // mPreviewRequestBuilder.addTarget(surface);
             //   mPreviewRequestBuilder.addTarget(mCaptureBuffer.getSurface());
 
             List<Surface> surfaces = new ArrayList<Surface>();
+            surface = new Surface(mSurfaceTexture);
             // nie rysuje na surface, przetwarzam w wątku preview
             surfaces.add(surface);
+            mCaptureBuffer = ImageReader.newInstance(mSurfaceTextureView.getWidth(),
+                    mSurfaceTextureView.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
+
+         //   mCaptureBuffer.
+
             // mCaptureBuffer przechwytuje bitmapa i wysyła ją do wyświetlenia
+
             surfaces.add(mCaptureBuffer.getSurface());
+
+
             //mSurfaceTexture.setOnFrameAvailableListener(mFrameAvailableListener);
-            mCaptureBuffer.setOnImageAvailableListener(
-                    mImageCaptureListener, mBackgroundHandler);
+
+
+            mCaptureBuffer.setOnImageAvailableListener(mImageCaptureListener, mBackgroundHandler2);
+
+
             //mSurfaceTexture.setOnFrameAvailableListener(mImageCaptureListener2);
             //mSurfaceTexture.setOnFrameAvailableListener(mImageCaptureListener2, mBackgroundHandler);
+
+            ;
             mCameraDevice.createCaptureSession(surfaces, mCaptureSessionListener, mBackgroundHandler);
 
             // mSurfaceTexture.
@@ -451,7 +516,6 @@ public class CameraViewFragment2 extends Fragment {
                             // Build a request for preview footage
                             CaptureRequest.Builder requestBuilder =
                                     mCameraDevice.createCaptureRequest(mCameraDevice.TEMPLATE_PREVIEW);
-
                             requestBuilder.addTarget(mCaptureBuffer.getSurface());
                             requestBuilder.addTarget(surface);
 
@@ -459,9 +523,8 @@ public class CameraViewFragment2 extends Fragment {
 
                             // Start displaying preview images
                             try {
-                                //                            mCaptureSession.setRepeatingRequest(previewRequest, mCaptureCallback, mBackgroundHandler);
                                 session.setRepeatingRequest(previewRequest, /*listener*/null,
-                                /*handler*/null);
+                                        mBackgroundHandler2);
                             } catch (CameraAccessException ex) {
                                 Log.e(TAG, "Failed to make repeating preview request", ex);
                             }
@@ -505,13 +568,15 @@ public class CameraViewFragment2 extends Fragment {
                     try {
                         Image image = mCaptureBuffer.acquireNextImage();
 
-
                         //      ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                         //      byte[] data = new byte[buffer.remaining()];
                         //      buffer.get(data);
-                        //image.
+                        //      image.
+                        //      Log.i("SSSS", String.valueOf(image.getWidth()));
+
                         mThread.WorkableImage = new IX(image);
-                        mPreviewThread.WorkableImage = new IX(image);
+
+                        // mPreviewThread.WorkableImage = new IX(image);
 //                        int width = image.getWidth();
 //                        int height = image.getHeight();
 //                        Bitmap btmp = mSurfaceTextureView.getBitmap();
@@ -647,6 +712,8 @@ public class CameraViewFragment2 extends Fragment {
         protected volatile double mCannyMin = 0.0;
         protected volatile double mCannyMax = 0.0;
         protected volatile int mCannyOpt = 0;
+        public volatile MatOfPoint bContour;
+        protected BitmapProcessQueue mProcessList = new BitmapProcessQueue();
 
 
         protected volatile Image frame;
@@ -656,7 +723,6 @@ public class CameraViewFragment2 extends Fragment {
 
         public RenderingThread(TextureView surface) {
             mSurface = surface;
-
         }
 
 
@@ -779,7 +845,8 @@ public class CameraViewFragment2 extends Fragment {
             Mat mat = new Mat(bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8UC1);
             Utils.bitmapToMat(bitmap, mat);
             Mat mat2 = mat;
-            Imgproc.GaussianBlur(mat, mat,new org.opencv.core.Size(45,45), 0);
+
+            Imgproc.GaussianBlur(mat, mat,new org.opencv.core.Size(5,5), 0);
             Utils.matToBitmap(mat2, bitmap);
             return bitmap;
         }
@@ -836,10 +903,7 @@ public class CameraViewFragment2 extends Fragment {
 //                }
             // Utils.
 
-
             Utils.matToBitmap(mat2, rBitmap);
-
-
 
             Bitmap bmOverlay = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
             Paint paint = new Paint();
@@ -851,6 +915,56 @@ public class CameraViewFragment2 extends Fragment {
             canvas.drawBitmap(rBitmap, new Matrix(), null);
            // canvas.drawBitmap(rBitmap, 0, 0, null);
             //return bmOverlay;
+
+            return bmOverlay;
+        }
+
+
+        /**
+         *
+         * @param bitmap
+         * @return
+         */
+        private Bitmap OpenCVFindCountours(Bitmap bitmap)
+        {
+            Mat mat = new Mat(bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8UC1);
+            Mat mat2 = new Mat(bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8UC1);
+         //   Mat mat2 = mat;
+            Utils.bitmapToMat(bitmap, mat);
+            // Conver the color
+            Imgproc.cvtColor(mat, mat, Imgproc.COLOR_RGB2GRAY);
+            List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
+
+            Imgproc.findContours(mat, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
+
+            Bitmap bmOverlay = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
+            Paint paint = new Paint();
+            paint.setColor(Color.RED);
+            Canvas canvas = new Canvas(bmOverlay);
+            canvas.drawPaint(paint);
+            Utils.bitmapToMat(bmOverlay, mat2);
+
+
+            for(int i=0; i< contours.size();i++){
+                //System.out.println(Imgproc.contourArea(contours.get(i)));
+                if (Imgproc.contourArea(contours.get(i)) > 50 ){
+                    Rect rect = Imgproc.boundingRect(contours.get(i));
+                    //System.out.println(rect.height);
+                   // if (rect.height > 10){
+                        //System.out.println(rect.x +","+rect.y+","+rect.height+","+rect.width);
+                        Log.i("CONT", "Got contour : " + rect.toString());
+                        //Imgproc.drawContours();
+                        Imgproc.drawContours(mat2,contours,i,new Scalar(0,255,255));
+                        //Imgproc.rectangle(mat2, new Point(rect.x,rect.y), new Point(rect.x+rect.width,rect.y+rect.height),new Scalar(255,255,255));
+                   // }
+                }
+            }
+
+
+            Utils.matToBitmap(mat2, bmOverlay);
+
+
+            //canvas.drawBitmap(rBitmap, new Matrix(), null);
 
             return bmOverlay;
         }
@@ -884,6 +998,7 @@ public class CameraViewFragment2 extends Fragment {
                 if (mDilate) {
                     Mat element1 = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new  org.opencv.core.Size(2*dilation_size + 1, 2*dilation_size+1));
                     Imgproc.dilate(mat, mat2, element1);
+
                     //Imgproc.dilate(mat, mat, new Mat());
                 }
 
@@ -898,6 +1013,46 @@ public class CameraViewFragment2 extends Fragment {
             return rBitmap;
         }
 
+        public Bitmap getBitmapImageFromYUV(byte[] data, int width, int height) {
+            YuvImage yuvimage = new YuvImage(data, ImageFormat.NV21, width, height, null);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            yuvimage.compressToJpeg(new android.graphics.Rect(0, 0, width, height), 50, baos);
+            byte[] jdata = baos.toByteArray();
+          //  BitmapFactory.Options bitmapFatoryOptions = new BitmapFactory.Options();
+          //  bitmapFatoryOptions.inPreferredConfig = Bitmap.Config.RGB_565;
+            Bitmap bmp = BitmapFactory.decodeByteArray(jdata, 0, jdata.length);
+            return bmp;
+        }
+
+        private byte[] convertYUV420ToN21(Image imgYUV420) {
+            byte[] rez = new byte[0];
+
+            ByteBuffer buffer0 = imgYUV420.getPlanes()[0].getBuffer();
+            ByteBuffer buffer2 = imgYUV420.getPlanes()[2].getBuffer();
+            int buffer0_size = buffer0.remaining();
+            int buffer2_size = buffer2.remaining();
+            rez = new byte[buffer0_size + buffer2_size];
+
+            buffer0.get(rez, 0, buffer0_size);
+            buffer2.get(rez, buffer0_size, buffer2_size);
+
+            return rez;
+        }
+
+
+        private byte[] convertN21ToJpeg(byte[] bytesN21, int w, int h) {
+            byte[] rez = new byte[0];
+
+            YuvImage yuv_image = new YuvImage(bytesN21, ImageFormat.NV21, w, h, null);
+            android.graphics.Rect rect = new android.graphics.Rect(0, 0, w, h);
+            ByteArrayOutputStream output_stream = new ByteArrayOutputStream();
+            yuv_image.compressToJpeg(rect, 100, output_stream);
+            rez = output_stream.toByteArray();
+
+            return rez;
+        }
+
+
         @Override
         public void run() {
             float x = 0.0f;
@@ -905,50 +1060,82 @@ public class CameraViewFragment2 extends Fragment {
             float speedX = 5.0f;
             float speedY = 3.0f;
 
+            Paint pText = new Paint();
+            pText.setColor(Color.GREEN);
+            pText.setTextSize(16);
+
             Paint paint = new Paint();
             paint.setColor(0xff00ff00);
             //paint.setColor(Color.BLACK);
             long prevTime = 0;
             long currentTime = 0;
             long frameTime = 0;
+
+
             while (mRunning && !Thread.interrupted()) {
                 try {
 
 
                     if (WorkableImage != null && WorkableImage.height != 0 && WorkableImage.width != 0 ) {
+
+
                         currentTime = System.currentTimeMillis();
                         if(prevTime != 0) {
                             frameTime = currentTime - prevTime;
-                            prevTime = currentTime;
                         }
+                  //      Log.i("BITMAP","FRAME CT: " + currentTime + " FRAME PT: " + prevTime);
+                        prevTime = currentTime;
+
                         //      Mat buf = new Mat(WorkableImage.height, WorkableImage.width, CvType.CV_8UC1);
                         //      buf.put(0, 0, WorkableImage.byteBuffer);
 
-                        Bitmap bitmap = BitmapFactory.decodeByteArray(WorkableImage.byteBuffer, 0, WorkableImage.byteBuffer.length);
+                         Bitmap bitmap = BitmapFactory.decodeByteArray(WorkableImage.byteBuffer, 0, WorkableImage.byteBuffer.length);
+                    //    Bitmap bitmap = getBitmapImageFromYUV(WorkableImage.byteBuffer, WorkableImage.width, WorkableImage.height);
+
+                    //    byte[] byteBuffer = convertN21ToJpeg(convertYUV420ToN21(WorkableImage.imageCopy), WorkableImage.width, WorkableImage.height);
+
+                    //    Bitmap bitmap = BitmapFactory.decodeByteArray(byteBuffer, 0, byteBuffer.length);
+
                         bitmap = rotate(bitmap, 90);
                         if (mResize) {
                             bitmap = Bitmap.createScaledBitmap(bitmap, downScaleWidth, downScaleHeight, false);
                         }
 
 
+                        //Log.i("QWERTY", String.valueOf(mProcessList.size()));
+                        try {
+                            BitmapMat bitMat = new BitmapMat(bitmap);
+                            bitMat= mProcessList.process(bitMat);
+                            bitmap = bitMat.bitmap;
 
-                        if (mNormalize)
-                            bitmap = OpenCVNormalize(bitmap);
+                            Log.i("QWERTY", "BITMAT SIZE" + String.valueOf(bitMat.getCountour().size()));
+                        }
+                        catch (Exception e)
+                        {
+                            Log.e("QWERTY","ERROR " + e.getLocalizedMessage());
+                        }
+//                        if (mNormalize)
+//                            bitmap = OpenCVNormalize(bitmap);
+//
+//                        if (mGray)
+//                            bitmap = toGrayscale(bitmap);
+//
+//
+//                        //bitmap = GetBinaryBitmap(bitmap);
+//
+//
+//                        bitmap = OpenCVDetectSquares(bitmap);
+//
+//                        if (mGauss)
+//                            bitmap = OpenCVGauss(bitmap);
+//
+//                        if (mSobel)
+//                            bitmap = OpenCVSobel(bitmap);
 
-                        if (mGray)
-                            bitmap = toGrayscale(bitmap);
 
+                        //if (mC)
 
-                        //bitmap = GetBinaryBitmap(bitmap);
-
-
-                        bitmap = OpenCVDetectSquares(bitmap);
-
-                        if (mGauss)
-                            bitmap = OpenCVGauss(bitmap);
-
-                        if (mSobel)
-                            bitmap = OpenCVSobel(bitmap);
+                       // bitmap = OpenCVFindCountours(bitmap);
 
 
               //          Imgproc.
@@ -1001,15 +1188,14 @@ public class CameraViewFragment2 extends Fragment {
                             }
                             bitmap.prepareToDraw();
 
-                            int allocationMap = bitmap.getAllocationByteCount();
-                            Log.i("RUN", "IAM DIFFERENT ALLOCATION MAP" + allocationMap);
-                            Log.i("RUN", "BITMAP" + bitmap.getHeight() + " : " + bitmap.getWidth());
-                            int canvasDensity = canvas.getDensity();
-                            Log.i("RUN", "IAM DIFFERENT CANVAS DENSITY MAP" + canvasDensity);
+                            //int allocationMap = bitmap.getAllocationByteCount();
+                            //Log.i("RUN", "IAM DIFFERENT ALLOCATION MAP" + allocationMap);
+                            //Log.i("RUN", "BITMAP" + bitmap.getHeight() + " : " + bitmap.getWidth());
+                            //int canvasDensity = canvas.getDensity();
+                            //Log.i("RUN", "IAM DIFFERENT CANVAS DENSITY MAP" + canvasDensity);
                           //  canvas.drawBitmap(bitmap, 0.0f, 0.0f, paint);
 
-                      //      bitmap.
-                          //  Bitmap img = BitmapFactory.decodeResource(this.getResources(), drawable.testimage);
+//                            Bitmap img = BitmapFactory.decodeResource(this.getResources(), drawable.testimage);
 //                            Paint paint2 = new Paint();
 //
 //                            ColorMatrix cm = new ColorMatrix();
@@ -1019,15 +1205,16 @@ public class CameraViewFragment2 extends Fragment {
 //                            float t = 120 * -256f;
 //                            cm.set(new float[] { a, b, c, 0, t, a, b, c, 0, t, a, b, c, 0, t, 0, 0, 0, 1, 0 });
 //                            paint.setColorFilter(new ColorMatrixColorFilter(cm));
-                      //      canvas.drawPaint(paint);
+//                            canvas.drawPaint(paint);
+
+
+
                             canvas.drawBitmap(bitmap, 0, 0, paint);
 
 
-
-                            canvas.drawText("TPS: ", 0, 0,x + 80.0f, y + 80.0f, paint);
-
+                           // canvas.drawText("TPS: ", 0, 0, pText);
+                    //        Log.i("BITMAP","TPS : " + frameTime);
                            // canvas.drawRect(x, y, x + 20.0f, y + 20.0f, paint);
-
 
 
                             // canvas.drawColor(0x00000000, PorterDuff.Mode.CLEAR);
@@ -1036,6 +1223,14 @@ public class CameraViewFragment2 extends Fragment {
                         } finally {
                             mSurface.unlockCanvasAndPost(canvas);
                         }
+
+
+
+
+                    }
+                    else
+                        {
+                        sleep(1000);
                     }
                 }
                 catch (Exception e)
@@ -1060,17 +1255,6 @@ public class CameraViewFragment2 extends Fragment {
                     // Interrupted
                 }
 
-                try
-                {
-
-                    //  Image image = mCaptureBuffer.acquireNextImage();
-                    //  System.out.println("LLL" + image.getWidth());
-
-                }
-                catch (Exception e)
-                {
-
-                }
             }
         }
 
