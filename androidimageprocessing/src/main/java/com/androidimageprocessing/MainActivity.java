@@ -50,6 +50,8 @@ import java.util.concurrent.Semaphore;
 import View.MainView;
 import renderer.MainRenderer;
 
+import static android.os.Debug.waitForDebugger;
+
 //public class MainActivity extends Activity{
 //
 //    private SurfaceView mSurfaceView;
@@ -112,6 +114,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        waitForDebugger();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         // mSurfaceView = (SurfaceView) findViewById(R.id.surfaceView);
@@ -309,7 +312,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
                     @Override
                     public BitmapMat process(BitmapMat bitmapMat) {
-                        return null;
+                        return bitmapMat;
                     }
                 });
             }
@@ -326,7 +329,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
                     @Override
                     public BitmapMat process(BitmapMat bitmapMat) {
-                        return null;
+                        return bitmapMat;
                     }
                 });
             }
@@ -343,7 +346,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
                     @Override
                     public BitmapMat process(BitmapMat bitmapMat) {
-                        return null;
+                        return bitmapMat;
                     }
                 });
             }
@@ -360,7 +363,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
                     @Override
                     public BitmapMat process(BitmapMat bitmapMat) {
-                        return null;
+                        return bitmapMat;
                     }
                 });
             }
@@ -377,7 +380,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
                     @Override
                     public BitmapMat process(BitmapMat bitmapMat) {
-                        return null;
+                        return bitmapMat;
                     }
                 });
             }
@@ -394,7 +397,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
                     @Override
                     public BitmapMat process(BitmapMat bitmapMat) {
-                        return null;
+                        return bitmapMat;
                     }
                 });
             }
@@ -410,9 +413,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                     }
 
                     @Override
-                    public BitmapMat process(BitmapMat bitmap) {
-
-                        return BitmapProcess.OpenCVThreshold(bitmap, mThresholdSeekValue);
+                    public BitmapMat process(BitmapMat bitmapMat) {
+                        return bitmapMat;
                     }
                 });
             }
@@ -431,7 +433,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
                     @Override
                     public BitmapMat process(BitmapMat bitmapMat) {
-                        return null;
+                        return bitmapMat;
                     }
                 });
             }
@@ -443,12 +445,15 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 mProcessList.add(new BitmapProcessInterface() {
                     @Override
                     public Bitmap process(Bitmap bitmap) {
-                        return BitmapProcess.OpenCVFindCountours(bitmap);
+                    //    Log.i("XCV","CALLED WITHOUT MAT");
+                    //    return BitmapProcess.OpenCVFindCountours(bitmap);
+                        return  bitmap;
                     }
 
                     @Override
                     public BitmapMat process(BitmapMat bitmapMat) {
-                        return null;
+                        Log.i("XCV","CALLED WITH MAT");
+                        return BitmapProcess.OpenCVFindCountours(bitmapMat);
                     }
                 });
             }
@@ -489,7 +494,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 //
                 BitmapProcessQueue ddf = new BitmapProcessQueue();
                 ddf = (BitmapProcessQueue) mProcessList.clone();
-
+                //
                 mCameraFragment.runUpdateState("PROCESSLIST",ddf);
                 int mSize = mProcessList.size();
                 Log.i("SIZE", String.valueOf(mSize));

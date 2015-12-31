@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import org.opencv.core.MatOfByte;
 import org.opencv.core.MatOfPoint;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -12,23 +13,32 @@ import java.util.List;
  */
 public class BitmapMat {
 
-    protected Bitmap bitmap;
-    private List<MatOfPoint> countour;
+    private Bitmap bitmap;
+    private MatOfPoint countour = new MatOfPoint();
 
     public BitmapMat(Bitmap bitmap)
     {
         this.bitmap = bitmap;
     }
 
-    public void setCountour(List<MatOfPoint> matOfByte)
+    public void setCountour(MatOfPoint matOfByte)
     {
         this.countour = matOfByte;
     }
 
-    public List<MatOfPoint> getCountour()
+    public MatOfPoint getCountour()
     {
         return this.countour;
     }
 
+    public Bitmap getBitmap()
+    {
+        return this.bitmap;
+    }
+
+    public void setBitmap(Bitmap bitmap)
+    {
+        this.bitmap = bitmap;
+    }
 
 }

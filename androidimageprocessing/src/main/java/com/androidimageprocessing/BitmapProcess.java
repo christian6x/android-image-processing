@@ -306,7 +306,7 @@ public final class BitmapProcess {
 
     public static BitmapMat OpenCVFindCountours(BitmapMat bitmapMat)
     {
-        Bitmap bitmap = bitmapMat.bitmap;
+        Bitmap bitmap = bitmapMat.getBitmap();
         Mat mat = new Mat(bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8UC1);
         Mat mat2 = new Mat(bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8UC1);
         //   Mat mat2 = mat;
@@ -344,11 +344,12 @@ public final class BitmapProcess {
             }
 
         }
-
+        MatOfPoint bCoutnour = new MatOfPoint();
         if(!bContour.empty())
         {
 //            Imgproc.drawContours(mat2,bContour,1,new Scalar(0,255,255));
             Imgproc.drawContours(mat2,contours,bCountourId,new Scalar(0,255,255));
+            bCoutnour = contours.get(bCountourId);
 //            Rect rect = Imgproc.boundingRect(contours.get(i));
         }
         shapeMap.values().toArray();
@@ -374,8 +375,8 @@ public final class BitmapProcess {
         Utils.matToBitmap(mat2, bmOverlay);
 
 
-        bitmapMat.bitmap = bmOverlay;
-        bitmapMat.setCountour(contours);
+        bitmapMat.setBitmap(bmOverlay);
+        bitmapMat.setCountour(bCoutnour);
         //canvas.drawBitmap(rBitmap, new Matrix(), null);
 
         return bitmapMat;
@@ -434,14 +435,14 @@ public final class BitmapProcess {
 
 
     public static BitmapMat OpenCVThreshold(BitmapMat bitmapMat, int threshold) {
-        Bitmap bitmap = bitmapMat.bitmap;
+        Bitmap bitmap = bitmapMat.getBitmap();
         Bitmap rBitmap = bitmap;
         Mat mat = new Mat(bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8UC1);
         Utils.bitmapToMat(bitmap, mat);
         Mat mat2 = mat;
         Imgproc.threshold(mat, mat2, threshold, 255.0, Imgproc.THRESH_BINARY);
         Utils.matToBitmap(mat2, rBitmap);
-        bitmapMat.bitmap = rBitmap;
+        bitmapMat.setBitmap(rBitmap);
         return bitmapMat;
     }
 

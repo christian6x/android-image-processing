@@ -23,25 +23,34 @@ public class BitmapProcessQueue extends ArrayList {
     public BitmapMat process(BitmapMat bitmapMat)
     {
         Iterator<BitmapProcessInterface> it = this.iterator();
-        BitmapMat curr;
+        Bitmap cBitmap;
         while(it.hasNext())
         {
             BitmapProcessInterface next  = it.next();
-            Bitmap cBitmap;
-            curr = null;
-            curr = next.process(bitmapMat);
-            if(curr == null)
-            {
-                Log.i("XCV","PROCESSING ONLY BITMAP");
-                cBitmap = next.process(bitmapMat.bitmap);
-                bitmapMat.bitmap = cBitmap;
-            }
-            else
-            {
-                Log.i("XCV","PROCESSING ALL");
-                bitmapMat = curr;
-            }
-            Log.i("YYY","PROCESSING");
+
+            // curr = null;
+
+            cBitmap = next.process(bitmapMat.getBitmap());
+           // Log.i("BVC", "FIRST PROCESS BITMAP WIDTH : " + String.valueOf(cBitmap.getWidth()));
+            bitmapMat.setBitmap(cBitmap);
+        //    cBitmap.recycle();
+            bitmapMat = next.process(bitmapMat);
+
+           // Log.i("BVC", "SECOND PROCESS BITMAP WIDTH : " + String.valueOf(bitmapMat.getBitmap().getWidth()));
+//
+//
+//            if(curr == null)
+//            {
+//                //Log.i("XCV","PROCESSING ONLY BITMAP");
+//                cBitmap = next.process(bitmapMat.bitmap);
+//                bitmapMat.bitmap = cBitmap;
+//            }
+//            else
+//            {
+//                Log.i("XCV","PROCESSING ALL");
+//                bitmapMat = curr;
+//            }
+//           // Log.i("YYY","PROCESSING");
         }
 
         return bitmapMat;

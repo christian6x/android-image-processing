@@ -85,6 +85,7 @@ public class CameraViewFragment2 extends Fragment {
     private Surface surface;
     private Handler mBackgroundHandler;
     private ImageReader mCaptureBuffer;
+    private ImageReader mPhotoBuffer;
     private HandlerThread mBackgroundThread;
     private static RenderingThread mThread;
     private PreviewThread mPreviewThread;
@@ -102,6 +103,8 @@ public class CameraViewFragment2 extends Fragment {
 
     private Handler mBackgroundHandler2;
     private HandlerThread mBackgroundThread2;
+
+    private boolean mTakeShot = false;
 
 
     public interface CustomRunnable<T> {
@@ -287,6 +290,10 @@ public class CameraViewFragment2 extends Fragment {
                 int yPos = (int) v.getY();
                 Log.i("BITMAP", "Click position. " + "X : " + xPos + " Y : " + yPos + " LEFT : " + v.getLeft() + " RIGHT : " + v.getRight() + " RAW X : " + event.getX() + "RAW Y : " + event.getY() + " TIME " );
 
+                takePicture();
+
+
+
                 return false;
             }
         });
@@ -318,6 +325,11 @@ public class CameraViewFragment2 extends Fragment {
             }
         });
         return view;
+    }
+
+    public void takePicture()
+    {
+        mTakeShot = true;
     }
 
     public void openCamera() {
@@ -421,30 +433,33 @@ public class CameraViewFragment2 extends Fragment {
             //   mPreviewRequestBuilder.addTarget(mCaptureBuffer.getSurface());
 
             List<Surface> surfaces = new ArrayList<Surface>();
+
             surface = new Surface(mSurfaceTexture);
             // nie rysuje na surface, przetwarzam w wątku preview
             surfaces.add(surface);
             mCaptureBuffer = ImageReader.newInstance(mSurfaceTextureView.getWidth(),
                     mSurfaceTextureView.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
 
-         //   mCaptureBuffer.
+            mPhotoBuffer = ImageReader.newInstance(mSurfaceTextureView.getWidth(),
+                    mSurfaceTextureView.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
+
 
             // mCaptureBuffer przechwytuje bitmapa i wysyła ją do wyświetlenia
 
             surfaces.add(mCaptureBuffer.getSurface());
 
+            surfaces.add(mPhotoBuffer.getSurface());
 
             //mSurfaceTexture.setOnFrameAvailableListener(mFrameAvailableListener);
 
-
             mCaptureBuffer.setOnImageAvailableListener(mImageCaptureListener, mBackgroundHandler2);
 
+            mPhotoBuffer.setOnImageAvailableListener(mImageCaptureListener2, mBackgroundHandler);
 
-            //mSurfaceTexture.setOnFrameAvailableListener(mImageCaptureListener2);
-            //mSurfaceTexture.setOnFrameAvailableListener(mImageCaptureListener2, mBackgroundHandler);
 
-            ;
             mCameraDevice.createCaptureSession(surfaces, mCaptureSessionListener, mBackgroundHandler);
+
+
 
             // mSurfaceTexture.
 //            mCameraDevice.createCaptureSession(Arrays.asList(surface),
@@ -517,17 +532,32 @@ public class CameraViewFragment2 extends Fragment {
                             CaptureRequest.Builder requestBuilder =
                                     mCameraDevice.createCaptureRequest(mCameraDevice.TEMPLATE_PREVIEW);
                             requestBuilder.addTarget(mCaptureBuffer.getSurface());
+                            requestBuilder.addTarget(mPhotoBuffer.getSurface());
                             requestBuilder.addTarget(surface);
 
+//                            CaptureRequest.Builder requestBuilder2 =
+//                                    mCameraDevice.createCaptureRequest(mCameraDevice.TEMPLATE_PREVIEW);
+//
+//                            requestBuilder2.addTarget(mPhotoBuffer.getSurface());
+//                            ArrayList<CaptureRequest> previewRequestList = new ArrayList<CaptureRequest>();
                             CaptureRequest previewRequest = requestBuilder.build();
+//                            previewRequestList.add(previewRequest);
+//                            previewRequestList.add(requestBuilder2.build());
 
+
+   //                         requestBuilder.addTarget(mPhotoBuffer.getSurface());
                             // Start displaying preview images
                             try {
-                                session.setRepeatingRequest(previewRequest, /*listener*/null,
+                                session.setRepeatingRequest(previewRequest, mCaptureCallback,
                                         mBackgroundHandler2);
+
+                          //      session.setRepeatingBurst(previewRequestList, null, mBackgroundHandler2);
+                                // session.
+                                Log.i(TAG, "Session successfully created.");
                             } catch (CameraAccessException ex) {
                                 Log.e(TAG, "Failed to make repeating preview request", ex);
                             }
+
                         } catch (CameraAccessException ex) {
                             Log.e(TAG, "Failed to build preview request", ex);
                         }
@@ -535,12 +565,14 @@ public class CameraViewFragment2 extends Fragment {
                 }
                 @Override
                 public void onClosed(CameraCaptureSession session) {
+                    Log.i(TAG,"Session closed");
                     mCaptureSession = null;
                 }
                 @Override
                 public void onConfigureFailed(CameraCaptureSession session) {
                     Log.e(TAG, "Configuration error on device '" + mCameraDevice.getId());
-                }};
+                }
+            };
 
     public class IX
     {
@@ -560,13 +592,33 @@ public class CameraViewFragment2 extends Fragment {
         }
     }
 
+
+    final ImageReader.OnImageAvailableListener mImageCaptureListener2 =
+            new ImageReader.OnImageAvailableListener() {
+
+                @Override
+                public void onImageAvailable(ImageReader reader) {
+                    Image img = reader.acquireLatestImage();
+                  //  Log.i("667", String.valueOf(img.getWidth()));
+
+                //    MatOfPoint biggestCountour = mThread.getBiggestCountour();
+                    img.close();
+              //      Log.i("987","reader");
+                    if (mTakeShot) {
+
+                        mTakeShot = false;
+                    }
+                }
+            };
+
+
     final ImageReader.OnImageAvailableListener mImageCaptureListener =
             new ImageReader.OnImageAvailableListener() {
                 @Override
                 public void onImageAvailable(ImageReader reader) {
                     // Save the image once we get a chance
                     try {
-                        Image image = mCaptureBuffer.acquireNextImage();
+                        Image image = reader.acquireNextImage();
 
                         //      ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                         //      byte[] data = new byte[buffer.remaining()];
@@ -614,12 +666,13 @@ public class CameraViewFragment2 extends Fragment {
         @Override
         public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request,
                                         CaptureResult partialResult) {
+            Log.i(TAG,"ONCAPTUREPROGRESS");
         }
 
         @Override
         public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request,
                                        TotalCaptureResult result) {
-
+            Log.i(TAG,"ONCAPTURECOMPLETED");
         }
     };
 
@@ -1052,6 +1105,13 @@ public class CameraViewFragment2 extends Fragment {
             return rez;
         }
 
+        private MatOfPoint latestMatOfPoint = new MatOfPoint();
+
+        public synchronized MatOfPoint getBiggestCountour()
+        {
+
+            return this.latestMatOfPoint;
+        }
 
         @Override
         public void run() {
@@ -1106,9 +1166,11 @@ public class CameraViewFragment2 extends Fragment {
                         try {
                             BitmapMat bitMat = new BitmapMat(bitmap);
                             bitMat= mProcessList.process(bitMat);
-                            bitmap = bitMat.bitmap;
+                            bitmap = bitMat.getBitmap();
 
-                            Log.i("QWERTY", "BITMAT SIZE" + String.valueOf(bitMat.getCountour().size()));
+
+
+                            Log.i("BVC", "BITMAT SIZE" + bitMat.getCountour().cols());
                         }
                         catch (Exception e)
                         {
