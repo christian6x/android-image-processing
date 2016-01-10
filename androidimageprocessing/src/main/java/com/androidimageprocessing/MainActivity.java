@@ -121,7 +121,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         //getFragmentManager().beginTransaction().add(R.id.Fra, new CameraViewFragment()).commit();
         //  mCameraFragment = getFragmentManager().findFragmentById(R.layout.camera_view_fragment);
         //final CameraViewFragment mCameraFragment = (CameraViewFragment) getFragmentManager().findFragmentById(R.id.fragment);
-        final CameraViewFragment2 mCameraFragment = (CameraViewFragment2) getFragmentManager().findFragmentById(R.id.fragment);
+        final CameraViewFragment3 mCameraFragment = (CameraViewFragment3) getFragmentManager().findFragmentById(R.id.fragment);
         //  fragment.<specific_function_name>();
         //    mSurfaceTexture = ()
         mCameraButton = (Button) findViewById(R.id.button);
@@ -445,14 +445,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 mProcessList.add(new BitmapProcessInterface() {
                     @Override
                     public Bitmap process(Bitmap bitmap) {
-                    //    Log.i("XCV","CALLED WITHOUT MAT");
-                    //    return BitmapProcess.OpenCVFindCountours(bitmap);
                         return  bitmap;
                     }
 
                     @Override
                     public BitmapMat process(BitmapMat bitmapMat) {
-                        Log.i("XCV","CALLED WITH MAT");
                         return BitmapProcess.OpenCVFindCountours(bitmapMat);
                     }
                 });

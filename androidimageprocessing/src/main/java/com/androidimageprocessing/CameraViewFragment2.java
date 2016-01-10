@@ -1,5 +1,6 @@
 package com.androidimageprocessing;
 
+import android.app.Activity;
 import android.app.Fragment;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -21,6 +22,7 @@ import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
@@ -30,9 +32,11 @@ import android.media.ImageReader;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.support.annotation.NonNull;
 import android.text.Editable;
 import android.util.Log;
 import android.util.Size;
+import android.util.SparseIntArray;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.Surface;
@@ -59,6 +63,9 @@ import org.opencv.imgproc.Imgproc;
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,7 +77,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class CameraViewFragment2 extends Fragment {
 
-    private static final String TAG = "DDDD";
+    private static final String TAG2 = "DDDD";
     private TextureView mSurfaceTextureView;
     private TextureView mBitmapTextureView;
     // Identyfikator "tej" kamery
@@ -90,6 +97,60 @@ public class CameraViewFragment2 extends Fragment {
     private static RenderingThread mThread;
     private PreviewThread mPreviewThread;
 
+    /**
+     * Conversion from screen rotation to JPEG orientation.
+     */
+    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
+    private static final int REQUEST_CAMERA_PERMISSION = 1;
+    private static final String FRAGMENT_DIALOG = "dialog";
+
+    static {
+        ORIENTATIONS.append(Surface.ROTATION_0, 90);
+        ORIENTATIONS.append(Surface.ROTATION_90, 0);
+        ORIENTATIONS.append(Surface.ROTATION_180, 270);
+        ORIENTATIONS.append(Surface.ROTATION_270, 180);
+    }
+
+    /**
+     * Tag for the {@link Log}.
+     */
+    private static final String TAG = "Camera2BasicFragment";
+
+    /**
+     * Camera state: Showing camera preview.
+     */
+    private static final int STATE_PREVIEW = 0;
+
+    /**
+     * Camera state: Waiting for the focus to be locked.
+     */
+    private static final int STATE_WAITING_LOCK = 1;
+
+    /**
+     * Camera state: Waiting for the exposure to be precapture state.
+     */
+    private static final int STATE_WAITING_PRECAPTURE = 2;
+
+    /**
+     * Camera state: Waiting for the exposure state to be something other than precapture.
+     */
+    private static final int STATE_WAITING_NON_PRECAPTURE = 3;
+
+    /**
+     * Camera state: Picture was taken.
+     */
+    private static final int STATE_PICTURE_TAKEN = 4;
+
+    /**
+     * Max preview width that is guaranteed by Camera2 API
+     */
+    private static final int MAX_PREVIEW_WIDTH = 1920;
+
+    /**
+     * Max preview height that is guaranteed by Camera2 API
+     */
+    private static final int MAX_PREVIEW_HEIGHT = 1080;
+
     static {
         if(!OpenCVLoader.initDebug())
         {
@@ -105,6 +166,8 @@ public class CameraViewFragment2 extends Fragment {
     private HandlerThread mBackgroundThread2;
 
     private boolean mTakeShot = false;
+    private ImageReader mImageReader;
+    private int mState;
 
 
     public interface CustomRunnable<T> {
@@ -330,6 +393,21 @@ public class CameraViewFragment2 extends Fragment {
     public void takePicture()
     {
         mTakeShot = true;
+        lockFocus();
+    }
+
+    private void lockFocus() {
+        try {
+            // This is how to tell the camera to lock focus.
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
+                    CameraMetadata.CONTROL_AF_TRIGGER_START);
+            // Tell #mCaptureCallback to wait for the lock.
+            mState = STATE_WAITING_LOCK;
+            mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback,
+                    mBackgroundHandler);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
     }
 
     public void openCamera() {
@@ -373,6 +451,9 @@ public class CameraViewFragment2 extends Fragment {
             if (!mCameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
                 throw new RuntimeException("Time out waiting to lock camera opening.");
             }
+
+
+
             // mCameraID.
             manager.openCamera(mCameraID,mStateCallback,mBackgroundHandler);
         } catch ( IllegalArgumentException e ) {
@@ -385,7 +466,16 @@ public class CameraViewFragment2 extends Fragment {
             e.printStackTrace();
         }
     }
+    static class CompareSizesByArea implements Comparator<Size> {
 
+        @Override
+        public int compare(Size lhs, Size rhs) {
+            // We cast here to ensure the multiplications won't overflow
+            return Long.signum((long) lhs.getWidth() * lhs.getHeight() -
+                    (long) rhs.getWidth() * rhs.getHeight());
+        }
+
+    }
     void cacPreviewSize( final int width, final int height ) {
         CameraManager manager = (CameraManager)mSurfaceTextureView.getContext().getSystemService(Context.CAMERA_SERVICE);
         try {
@@ -395,8 +485,23 @@ public class CameraViewFragment2 extends Fragment {
                 if (characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT)
                     continue;
 
+
+
+
                 mCameraID = cameraID;
                 StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+
+
+                // For still image captures, we use the largest available size.
+                Size largest = Collections.max(
+                        Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),
+                        new CompareSizesByArea());
+
+                mPhotoBuffer = ImageReader.newInstance(largest.getWidth(),
+                        largest.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
+
+                mPhotoBuffer.setOnImageAvailableListener(mImageCaptureListener2, mBackgroundHandler);
+
                 for ( Size psize : map.getOutputSizes(SurfaceTexture.class)) {
                     System.out.println("Rozmiar : " + psize.getWidth() + "width : " + width + "height : " + height);
                     if ( width == psize.getWidth() && height == psize.getHeight() ) {
@@ -440,21 +545,19 @@ public class CameraViewFragment2 extends Fragment {
             mCaptureBuffer = ImageReader.newInstance(mSurfaceTextureView.getWidth(),
                     mSurfaceTextureView.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
 
-            mPhotoBuffer = ImageReader.newInstance(mSurfaceTextureView.getWidth(),
-                    mSurfaceTextureView.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
 
 
             // mCaptureBuffer przechwytuje bitmapa i wysyła ją do wyświetlenia
 
             surfaces.add(mCaptureBuffer.getSurface());
 
-            surfaces.add(mPhotoBuffer.getSurface());
+        //    surfaces.add(mPhotoBuffer.getSurface());
 
             //mSurfaceTexture.setOnFrameAvailableListener(mFrameAvailableListener);
 
             mCaptureBuffer.setOnImageAvailableListener(mImageCaptureListener, mBackgroundHandler2);
 
-            mPhotoBuffer.setOnImageAvailableListener(mImageCaptureListener2, mBackgroundHandler);
+
 
 
             mCameraDevice.createCaptureSession(surfaces, mCaptureSessionListener, mBackgroundHandler);
@@ -515,6 +618,7 @@ public class CameraViewFragment2 extends Fragment {
     };
 
 
+    private CaptureRequest mPreviewRequest;
     /**
      * Callbacks invoked upon state changes in our {@code CameraCaptureSession}. <p>These are run on
      * {@code mBackgroundThread}.</p>
@@ -532,7 +636,7 @@ public class CameraViewFragment2 extends Fragment {
                             CaptureRequest.Builder requestBuilder =
                                     mCameraDevice.createCaptureRequest(mCameraDevice.TEMPLATE_PREVIEW);
                             requestBuilder.addTarget(mCaptureBuffer.getSurface());
-                            requestBuilder.addTarget(mPhotoBuffer.getSurface());
+                    //        requestBuilder.addTarget(mPhotoBuffer.getSurface());
                             requestBuilder.addTarget(surface);
 
 //                            CaptureRequest.Builder requestBuilder2 =
@@ -540,7 +644,7 @@ public class CameraViewFragment2 extends Fragment {
 //
 //                            requestBuilder2.addTarget(mPhotoBuffer.getSurface());
 //                            ArrayList<CaptureRequest> previewRequestList = new ArrayList<CaptureRequest>();
-                            CaptureRequest previewRequest = requestBuilder.build();
+                            mPreviewRequest = requestBuilder.build();
 //                            previewRequestList.add(previewRequest);
 //                            previewRequestList.add(requestBuilder2.build());
 
@@ -548,7 +652,7 @@ public class CameraViewFragment2 extends Fragment {
    //                         requestBuilder.addTarget(mPhotoBuffer.getSurface());
                             // Start displaying preview images
                             try {
-                                session.setRepeatingRequest(previewRequest, mCaptureCallback,
+                                session.setRepeatingRequest(mPreviewRequest, mCaptureCallback,
                                         mBackgroundHandler2);
 
                           //      session.setRepeatingBurst(previewRequestList, null, mBackgroundHandler2);
@@ -662,19 +766,155 @@ public class CameraViewFragment2 extends Fragment {
 
                 }};
 
-    private final CameraCaptureSession.CaptureCallback mCaptureCallback = new CameraCaptureSession.CaptureCallback() {
-        @Override
-        public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request,
-                                        CaptureResult partialResult) {
-            Log.i(TAG,"ONCAPTUREPROGRESS");
+//    private final CameraCaptureSession.CaptureCallback mCaptureCallback = new CameraCaptureSession.CaptureCallback() {
+//        @Override
+//        public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request,
+//                                        CaptureResult partialResult) {
+//            Log.i(TAG,"ONCAPTUREPROGRESS");
+//        }
+//
+//        @Override
+//        public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request,
+//                                       TotalCaptureResult result) {
+//            Log.i(TAG,"ONCAPTURECOMPLETED");
+//        }
+//    };
+private void captureStillPicture() {
+    try {
+        final Activity activity = getActivity();
+        if (null == activity || null == mCameraDevice) {
+            return;
+        }
+        // This is the CaptureRequest.Builder that we use to take a picture.
+        final CaptureRequest.Builder captureBuilder =
+                mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+        captureBuilder.addTarget(mImageReader.getSurface());
+
+        // Use the same AE and AF modes as the preview.
+        captureBuilder.set(CaptureRequest.CONTROL_AF_MODE,
+                CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+        captureBuilder.set(CaptureRequest.CONTROL_AE_MODE,
+                CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+
+        // Orientation
+        int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
+        captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
+
+        CameraCaptureSession.CaptureCallback CaptureCallback
+                = new CameraCaptureSession.CaptureCallback() {
+
+            @Override
+            public void onCaptureCompleted(@NonNull CameraCaptureSession session,
+                                           @NonNull CaptureRequest request,
+                                           @NonNull TotalCaptureResult result) {
+               // showToast("Saved: " + mFile);
+              //  Log.d(TAG, mFile.toString());
+                unlockFocus();
+            }
+        };
+
+        mCaptureSession.stopRepeating();
+        mCaptureSession.capture(captureBuilder.build(), CaptureCallback, null);
+    } catch (CameraAccessException e) {
+        e.printStackTrace();
+    }
+}
+
+    private void unlockFocus() {
+        try {
+            // Reset the auto-focus trigger
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
+                    CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
+                    CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+            mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback,
+                    mBackgroundHandler);
+            // After this, the camera will go back to the normal state of preview.
+            mState = STATE_PREVIEW;
+            mCaptureSession.setRepeatingRequest(mPreviewRequest, mCaptureCallback,
+                    mBackgroundHandler);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+    private void runPrecaptureSequence() {
+        try {
+            // This is how to tell the camera to trigger.
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
+                    CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+            // Tell #mCaptureCallback to wait for the precapture sequence to be set.
+            mState = STATE_WAITING_PRECAPTURE;
+            mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback,
+                    mBackgroundHandler);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+    private final CameraCaptureSession.CaptureCallback mCaptureCallback
+            = new CameraCaptureSession.CaptureCallback() {
+
+        private void process(CaptureResult result) {
+            switch (mState) {
+                case STATE_PREVIEW: {
+                    // We have nothing to do when the camera preview is working normally.
+                    break;
+                }
+                case STATE_WAITING_LOCK: {
+                    Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
+                    if (afState == null) {
+                        captureStillPicture();
+                    } else if (CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState ||
+                            CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState) {
+                        // CONTROL_AE_STATE can be null on some devices
+                        Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+                        if (aeState == null ||
+                                aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED) {
+                            mState = STATE_PICTURE_TAKEN;
+                            captureStillPicture();
+                        } else {
+                            runPrecaptureSequence();
+                        }
+                    }
+                    break;
+                }
+                case STATE_WAITING_PRECAPTURE: {
+                    // CONTROL_AE_STATE can be null on some devices
+                    Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+                    if (aeState == null ||
+                            aeState == CaptureResult.CONTROL_AE_STATE_PRECAPTURE ||
+                            aeState == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED) {
+                        mState = STATE_WAITING_NON_PRECAPTURE;
+                    }
+                    break;
+                }
+                case STATE_WAITING_NON_PRECAPTURE: {
+                    // CONTROL_AE_STATE can be null on some devices
+                    Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+                    if (aeState == null || aeState != CaptureResult.CONTROL_AE_STATE_PRECAPTURE) {
+                        mState = STATE_PICTURE_TAKEN;
+                        captureStillPicture();
+                    }
+                    break;
+                }
+            }
         }
 
         @Override
-        public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request,
-                                       TotalCaptureResult result) {
-            Log.i(TAG,"ONCAPTURECOMPLETED");
+        public void onCaptureProgressed(@NonNull CameraCaptureSession session,
+                                        @NonNull CaptureRequest request,
+                                        @NonNull CaptureResult partialResult) {
+            process(partialResult);
         }
+
+        @Override
+        public void onCaptureCompleted(@NonNull CameraCaptureSession session,
+                                       @NonNull CaptureRequest request,
+                                       @NonNull TotalCaptureResult result) {
+            process(result);
+        }
+
     };
+
 
     private final SurfaceTexture.OnFrameAvailableListener mFrameAvailableListener = new SurfaceTexture.OnFrameAvailableListener(){
 
@@ -864,7 +1104,7 @@ public class CameraViewFragment2 extends Fragment {
             Mat tmp = new Mat(bitmap.getWidth(), bitmap.getHeight(), CvType.CV_8UC1);
             // Convert
             Utils.bitmapToMat(bitmap, tmp);
-            Mat gray = new Mat(bitmap.getWidth(), bitmap.getHeight(),     CvType.CV_8UC1);
+            Mat gray = new Mat(bitmap.getWidth(), bitmap.getHeight(), CvType.CV_8UC1);
             // Conver the color
             Imgproc.cvtColor(tmp, gray, Imgproc.COLOR_RGB2GRAY);
             // Convert back to bitmap
@@ -1170,7 +1410,7 @@ public class CameraViewFragment2 extends Fragment {
 
 
 
-                            Log.i("BVC", "BITMAT SIZE" + bitMat.getCountour().cols());
+                        //    Log.i("BVC", "BITMAT SIZE" + bitMat.getCountour().cols());
                         }
                         catch (Exception e)
                         {

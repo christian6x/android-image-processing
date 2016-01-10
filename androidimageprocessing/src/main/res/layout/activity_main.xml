@@ -36,7 +36,7 @@
     <fragment
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:name="com.androidimageprocessing.CameraViewFragment2"
+        android:name="com.androidimageprocessing.CameraViewFragment3"
         android:id="@+id/fragment"
         android:layout_alignTop="@+id/button"
         tools:layout="@layout/camera_view_frame_fragment"

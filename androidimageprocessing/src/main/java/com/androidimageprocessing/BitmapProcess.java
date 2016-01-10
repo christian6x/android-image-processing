@@ -10,12 +10,15 @@ import android.graphics.Paint;
 import android.util.Log;
 
 import org.opencv.android.Utils;
+import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
+import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.sql.Array;
@@ -312,18 +315,40 @@ public final class BitmapProcess {
         //   Mat mat2 = mat;
         Utils.bitmapToMat(bitmap, mat);
         // Conver the color
-        Imgproc.cvtColor(mat, mat, Imgproc.COLOR_RGB2GRAY);
+
         List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
 
-        Imgproc.findContours(mat, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
-
-        Bitmap bmOverlay = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
-        Paint paint = new Paint();
-        paint.setColor(Color.RED);
+        Bitmap bmOverlay = bitmap;
+    //    Paint paint = new Paint();
+    //    paint.setColor(Color.RED);
         Canvas canvas = new Canvas(bmOverlay);
-        canvas.drawPaint(paint);
+    //    canvas.drawPaint(paint);
         Utils.bitmapToMat(bmOverlay, mat2);
+        MatOfPoint bCoutnour = getBiggestCountour(mat);
+        if(!bCoutnour.empty()) {
+            contours = new ArrayList<MatOfPoint>(1);
+            contours.add(0, bCoutnour);
+            Imgproc.drawContours(mat2, contours, 0, new Scalar(0, 255, 255));
+        }
+        Utils.matToBitmap(mat2, bmOverlay);
+        bitmapMat.setBitmap(bmOverlay);
+        bitmapMat.setCountour(bCoutnour);
+        //canvas.drawBitmap(rBitmap, new Matrix(), null);
 
+        return bitmapMat;
+    }
+
+    private static MatOfPoint getBiggestCountour(Mat mat)
+    {
+        try {
+            Imgproc.cvtColor(mat, mat, Imgproc.COLOR_RGB2GRAY);
+        }
+        catch(Exception e)
+        {
+
+        }
+        List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
+        Imgproc.findContours(mat, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
         /*
             Wybieranie największego kształtu
          */
@@ -332,55 +357,111 @@ public final class BitmapProcess {
         double maxSize = 0;
         int bCountourId = 0;
         for(int i=0; i< contours.size();i++){
-
+            MatOfPoint2f NewMtx = new MatOfPoint2f( contours.get(i).toArray() );
+            double peri = Imgproc.arcLength(NewMtx, true);
+            MatOfPoint2f DstMtx = NewMtx;
+            Imgproc.approxPolyDP(NewMtx, DstMtx, 0.02 * peri, true);
             double area = Imgproc.contourArea(contours.get(i));
-
-            shapeMap.put(contours.get(i), area);
-            if(maxSize < area)
-            {
-                maxSize = area;
-                bContour = contours.get(i);
-                bCountourId = i;
+            if(DstMtx.rows() == 4) {
+                shapeMap.put(contours.get(i), area);
+                if (maxSize < area) {
+                    maxSize = area;
+                    bContour = contours.get(i);
+                    bCountourId = i;
+                }
             }
 
         }
+
         MatOfPoint bCoutnour = new MatOfPoint();
         if(!bContour.empty())
         {
+            bCoutnour = contours.get(bCountourId);
+        }
+        return bCoutnour;
+    }
+
+    public static Bitmap WriteCountoursOnBitmap(Bitmap bitmap, BitmapMat bitmapMat)
+    {
+     //   Bitmap rBitmap = bitmap;
+        Bitmap bBitmap = bitmapMat.getBitmap();
+        MatOfPoint bCoutnour = bitmapMat.getCountour();
+        // Pusta bitmapa o wymiarach bitmapy z nałozonymi countarami
+        // Nakładam na nią countour
+        Bitmap rBitmap = Bitmap.createBitmap(bBitmap.getWidth(), bBitmap.getHeight(), bBitmap.getConfig());
+
+
+        // Mapa wejściowych countour. Z niej tworzymy mat z countour w skali
+        List<MatOfPoint> contours = new ArrayList<MatOfPoint>(1);
+        contours.add(0, bCoutnour);
+
+        Mat mat = new Mat(bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8UC1);
+        Utils.bitmapToMat(bitmap, mat);
+        // Mat na którym rysujemy countour
+
+        Mat mat2 = new Mat(rBitmap.getHeight(), rBitmap.getWidth(), CvType.CV_8UC1);
+        Log.i("IMGHX","BCOUNTOUR not empty" + bCoutnour.width() + " " + bCoutnour.height());
+        Imgproc.drawContours(mat2, contours, 0, new Scalar(255, 255, 255),2);
+
+        Imgproc.resize(mat2, mat2, new Size(bitmap.getWidth(), bitmap.getHeight()));
+
+       // Imgproc.resize(mat2, mat2, new Size(bitmap.getWidth(), bitmap.getHeight()));
+        // mat2 powinno być w skali
+        if(!mat2.empty()) {
+            MatOfPoint biggestCountour = getBiggestCountour(mat2);
+          //  contours = new ArrayList<MatOfPoint>(1);
+            contours.clear();
+            contours.add(0, biggestCountour);
+            Imgproc.drawContours(mat, contours, 0, new Scalar(0, 255, 0),10);
+            Log.i("IMGHX","MAT2 not empty" + mat.width() + " " + mat.height());
+            Utils.matToBitmap(mat, bitmap);
+            return bitmap;
+        }
+
+
+        MatOfPoint bContour = new MatOfPoint();
+        double maxSize = 0;
+        int bCountourId = 0;
+        for(int i=0; i< contours.size();i++){
+//            peri = cv2.arcLength(c, True)
+//            approx = cv2.approxPolyDP(c, 0.02
+            /// Source variable
+            MatOfPoint SrcMtx;
+            HashMap<MatOfPoint, Double> shapeMap = new HashMap<MatOfPoint, Double>();
+            /// New variable
+            MatOfPoint2f NewMtx = new MatOfPoint2f( contours.get(i).toArray() );
+
+            double peri = Imgproc.arcLength(NewMtx, true);
+            MatOfPoint2f DstMtx = NewMtx;
+            Imgproc.approxPolyDP(NewMtx, DstMtx, 0.02 * peri, true);
+            double area = Imgproc.contourArea(contours.get(i));
+            // Log.i("CONT",DstMtx.cols() + " rows " + DstMtx.rows());
+            if(DstMtx.rows() == 4) {
+                shapeMap.put(contours.get(i), area);
+                if (maxSize < area) {
+                    maxSize = area;
+                    bContour = contours.get(i);
+                    bCountourId = i;
+                }
+            }
+
+        }
+
+      //  mat2.mul(bCoutnour);
+
+
+
+        if(!bContour.empty())
+        {
 //            Imgproc.drawContours(mat2,bContour,1,new Scalar(0,255,255));
-            Imgproc.drawContours(mat2,contours,bCountourId,new Scalar(0,255,255));
+            Imgproc.drawContours(mat,contours,bCountourId,new Scalar(0,255,255));
             bCoutnour = contours.get(bCountourId);
 //            Rect rect = Imgproc.boundingRect(contours.get(i));
         }
-        shapeMap.values().toArray();
-
-
-//        for(int i=0; i< contours.size();i++){
-//            //System.out.println(Imgproc.contourArea(contours.get(i)));
-//            if (Imgproc.contourArea(contours.get(i)) > 50 ){
-//                Rect rect = Imgproc.boundingRect(contours.get(i));
-//                //System.out.println(rect.height);
-//                // if (rect.height > 10){
-//                //System.out.println(rect.x +","+rect.y+","+rect.height+","+rect.width);
-//                Log.i("CONT", "Got contour : " + rect.toString());
-//                //Imgproc.drawContours();
-//
-//                //Imgproc.drawContours(mat2,contours,i,new Scalar(0,255,255));
-//                //Imgproc.rectangle(mat2, new Point(rect.x,rect.y), new Point(rect.x+rect.width,rect.y+rect.height),new Scalar(255,255,255));
-//                // }
-//            }
-//        }
-//
-
-        Utils.matToBitmap(mat2, bmOverlay);
-
-
-        bitmapMat.setBitmap(bmOverlay);
-        bitmapMat.setCountour(bCoutnour);
-        //canvas.drawBitmap(rBitmap, new Matrix(), null);
-
-        return bitmapMat;
+        Utils.matToBitmap(mat, rBitmap);
+        return rBitmap;
     }
+
 
     public static Bitmap OpenCVCanny(Bitmap bitmap, int mCannyMin, int mCannyMax, int mCannyOpt)
     {

@@ -41,4 +41,15 @@ public class BitmapMat {
         this.bitmap = bitmap;
     }
 
+    public static String describeBitmapMat(BitmapMat bitmapMat)
+    {
+        String description = "";
+        description += "BITMAP  H    : " + bitmapMat.getBitmap().getHeight() + "\n";
+        description += "BITMAP  W    : " + bitmapMat.getBitmap().getWidth() + "\n";
+        description += "MATCONT COLS : " + bitmapMat.getCountour().cols() + "\n";
+        description += "MATCONT ROWS : " + bitmapMat.getCountour().rows() + "\n";
+        description += "MATCONT H    : " + bitmapMat.getCountour().height() + "\n";
+        description += "MATCONT W    : " + bitmapMat.getCountour().width() + "\n";
+        return description;
+    }
 }
