@@ -2,11 +2,13 @@ package com.utils;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.media.Image;
 
 import com.androidimageprocessing.BitmapMat;
 import com.androidimageprocessing.BitmapProcess;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -32,6 +34,7 @@ public class ImageCropper implements Runnable {
     private final File mFile;
 
     private final BitmapMat mBitmapMat;
+    private Matrix mTransformMatrix;
 
     public ImageCropper(Image image, File file, BitmapMat latestMat) {
         mImage = image;
@@ -39,6 +42,12 @@ public class ImageCropper implements Runnable {
         mBitmapMat = latestMat;
     }
 
+    public ImageCropper(Image image, File file, BitmapMat latestMat, Matrix rotation) {
+        mImage = image;
+        mFile = file;
+        mBitmapMat = latestMat;
+        mTransformMatrix = rotation;
+    }
 
 
     @Override
@@ -47,39 +56,57 @@ public class ImageCropper implements Runnable {
         byte[] bytes = new byte[buffer.remaining()];
         buffer.get(bytes);
 
-        Bitmap pBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-
-    //    pBitmap = rotate(pBitmap, 90);
-
-    //    Bitmap mBitmap = mBitmapMat.getBitmap();
-    //    Bitmap bitmap = Bitmap.createScaledBitmap(pBitmap, mImage.getWidth(), mImage.getHeight(), true);
-        Bitmap bitmap = BitmapProcess.WriteCountoursOnBitmap(pBitmap, mBitmapMat);
-        mBitmapMat.setBitmap(bitmap);
-
 
         // Szczegóły o przetworzonym zdjęciu
         String description = BitmapMat.describeBitmapMat(mBitmapMat);
         description += "IMAGE   H    : " +  mImage.getHeight() + "\n";
         description += "IMAGE   W    : " +  mImage.getWidth() + "\n";
+        mImage.close();
+        Log.i("CROPPER_TIME","Decoding bitmap");
+
+        Bitmap pBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+
+        //pBitmap = Bitmap.createBitmap(pBitmap, 0, 0, pBitmap.getWidth(), pBitmap.getHeight());
+        /*
+            Z uwzględnieniem transformacji
+         */
+        // pBitmap = Bitmap.createBitmap(pBitmap, 0, 0, pBitmap.getWidth(), pBitmap.getHeight(), mTransformMatrix, true);
+
+        //    pBitmap = rotate(pBitmap, 90);
+
+    //    Bitmap mBitmap = mBitmapMat.getBitmap();
+    //    Bitmap bitmap = Bitmap.createScaledBitmap(pBitmap, mImage.getWidth(), mImage.getHeight(), true);
+        Log.i("CROPPER_TIME","Processing contours bitmap");
+        Bitmap bitmap = BitmapProcess.WriteCountoursOnBitmap(pBitmap, mBitmapMat);
+        mBitmapMat.setBitmap(bitmap);
+
         Log.i(TAG,description);
 
         FileOutputStream output = null;
+        FileOutputStream outputBitmap = null;
         try {
-            output = new FileOutputStream(mFile);
-            // pBitmap.compress(Bitmap.CompressFormat.PNG, 100, output);
-            output.write(bytes);
+            Log.i("CROPPER_TIME","Writing files");
+            output = new FileOutputStream(mFile+".jpg");
+          //  outputBitmap = new FileOutputStream(mFile+"_BITMAP.jpg");
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, output);
+        //    byte[] byteArray = stream.toByteArray();
+        //    bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputBitmap);
+           // output.write(bytes);
+        //    outputBitmap.write(bytes);
+
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            mImage.close();
             if (null != output) {
                 try {
                     output.close();
+                    //outputBitmap.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
         }
+        Log.i("CROPPER_TIME","Completed");
     }
 
 }

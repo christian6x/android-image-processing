@@ -50,7 +50,7 @@ import java.util.concurrent.Semaphore;
 import View.MainView;
 import renderer.MainRenderer;
 
-import static android.os.Debug.waitForDebugger;
+//import static android.os.Debug.waitForDebugger;
 
 //public class MainActivity extends Activity{
 //
@@ -114,7 +114,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        waitForDebugger();
+        //waitForDebugger();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         // mSurfaceView = (SurfaceView) findViewById(R.id.surfaceView);

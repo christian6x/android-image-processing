@@ -25,6 +25,7 @@ public class IX
     protected Bitmap mBitmap;
     public IX(Image image)
     {
+
         this.mBitmap = createBitmapFromYUV420(image);
 
 //        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
@@ -37,6 +38,7 @@ public class IX
     }
 
     public IX(Image image, Matrix mCurrentTransformMatrix) {
+        this.mBitmap = createBitmapFromYUV420(image);
         this.width = image.getWidth();
         this.height = image.getHeight();
         this.imageCopy = image;
@@ -45,9 +47,7 @@ public class IX
 
     public static Bitmap createBitmapFromYUV420(Image image) {
         Image.Plane[] planes = image.getPlanes();
-
         byte[] imageData = new byte[image.getWidth() * image.getHeight() * ImageFormat.getBitsPerPixel(ImageFormat.YUV_420_888) / 8];
-
         ByteBuffer buffer = planes[0].getBuffer();
         int lastIndex = buffer.remaining();
         buffer.get(imageData, 0, lastIndex);

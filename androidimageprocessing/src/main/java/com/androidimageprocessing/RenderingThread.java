@@ -425,21 +425,12 @@ public class RenderingThread extends Thread {
                     if(prevTime != 0) {
                         frameTime = currentTime - prevTime;
                     }
-                    //      Log.i("BITMAP","FRAME CT: " + currentTime + " FRAME PT: " + prevTime);
                     prevTime = currentTime;
 
-                    //      Mat buf = new Mat(WorkableImage.height, WorkableImage.width, CvType.CV_8UC1);
-                    //      buf.put(0, 0, WorkableImage.byteBuffer);
-
-                   // Bitmap bitmap = BitmapFactory.decodeByteArray(WorkableImage.byteBuffer, 0, WorkableImage.byteBuffer.length);
                     Bitmap bitmap = WorkableImage.mBitmap;
-                    //    Bitmap bitmap = getBitmapImageFromYUV(WorkableImage.byteBuffer, WorkableImage.width, WorkableImage.height);
 
-                    //    byte[] byteBuffer = convertN21ToJpeg(convertYUV420ToN21(WorkableImage.imageCopy), WorkableImage.width, WorkableImage.height);
 
-                    //    Bitmap bitmap = BitmapFactory.decodeByteArray(byteBuffer, 0, byteBuffer.length);
-
-                    bitmap = rotate(bitmap, 90);
+                    //bitmap = rotate(bitmap, 90);
                     if (mResize) {
                         bitmap = Bitmap.createScaledBitmap(bitmap, bitmapSize.getWidth(), bitmapSize.getHeight(), false);
                     }

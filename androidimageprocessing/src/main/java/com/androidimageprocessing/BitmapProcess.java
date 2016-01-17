@@ -20,6 +20,7 @@ import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.utils.Converters;
 
 import java.sql.Array;
 import java.util.ArrayList;
@@ -319,24 +320,32 @@ public final class BitmapProcess {
         List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
 
         Bitmap bmOverlay = bitmap;
-    //    Paint paint = new Paint();
-    //    paint.setColor(Color.RED);
+        Paint paint = new Paint();
+        paint.setColor(Color.RED);
         Canvas canvas = new Canvas(bmOverlay);
-    //    canvas.drawPaint(paint);
+        canvas.drawPaint(paint);
         Utils.bitmapToMat(bmOverlay, mat2);
         MatOfPoint bCoutnour = getBiggestCountour(mat);
+
+
         if(!bCoutnour.empty()) {
             contours = new ArrayList<MatOfPoint>(1);
             contours.add(0, bCoutnour);
-            Imgproc.drawContours(mat2, contours, 0, new Scalar(0, 255, 255));
+            Imgproc.drawContours(mat2, contours, 0, new Scalar(255, 255, 255));
         }
+
+
+        //canvas.drawBitmap(rBitmap, new Matrix(), null);
         Utils.matToBitmap(mat2, bmOverlay);
         bitmapMat.setBitmap(bmOverlay);
         bitmapMat.setCountour(bCoutnour);
-        //canvas.drawBitmap(rBitmap, new Matrix(), null);
+
 
         return bitmapMat;
     }
+
+
+
 
     private static MatOfPoint getBiggestCountour(Mat mat)
     {
@@ -381,6 +390,7 @@ public final class BitmapProcess {
         return bCoutnour;
     }
 
+
     public static Bitmap WriteCountoursOnBitmap(Bitmap bitmap, BitmapMat bitmapMat)
     {
      //   Bitmap rBitmap = bitmap;
@@ -400,22 +410,179 @@ public final class BitmapProcess {
         // Mat na którym rysujemy countour
 
         Mat mat2 = new Mat(rBitmap.getHeight(), rBitmap.getWidth(), CvType.CV_8UC1);
-        Log.i("IMGHX","BCOUNTOUR not empty" + bCoutnour.width() + " " + bCoutnour.height());
-        Imgproc.drawContours(mat2, contours, 0, new Scalar(255, 255, 255),2);
-
+        Log.i("IMGHX", "BCOUNTOUR not empty" + bCoutnour.width() + " " + bCoutnour.height());
+        Imgproc.drawContours(mat2, contours, 0, new Scalar(255, 255, 255),4);
         Imgproc.resize(mat2, mat2, new Size(bitmap.getWidth(), bitmap.getHeight()));
 
        // Imgproc.resize(mat2, mat2, new Size(bitmap.getWidth(), bitmap.getHeight()));
         // mat2 powinno być w skali
         if(!mat2.empty()) {
             MatOfPoint biggestCountour = getBiggestCountour(mat2);
-          //  contours = new ArrayList<MatOfPoint>(1);
-            contours.clear();
-            contours.add(0, biggestCountour);
-            Imgproc.drawContours(mat, contours, 0, new Scalar(0, 255, 0),10);
-            Log.i("IMGHX","MAT2 not empty" + mat.width() + " " + mat.height());
-            Utils.matToBitmap(mat, bitmap);
-            return bitmap;
+
+            /*
+            Wycinanie fragmentu i obracanie
+             */
+            double[] centers = {(double)bitmap.getWidth()/2, (double)bitmap.getHeight()/2};
+           // Point image_center = new Point(centers);
+
+            Rect rec = Imgproc.boundingRect(biggestCountour);
+            Mat imCrop=  new Mat(mat,rec);
+
+
+            Point lDown = null;
+            Point lUp = null;
+            Point rDown = null;
+            Point rUp = null;
+
+            double minX = Double.MAX_VALUE;
+            double minY = Double.MAX_VALUE;
+            double maxX = Double.MIN_VALUE;
+            double maxY = Double.MIN_VALUE;
+
+            Point[] pArray = biggestCountour.toArray();
+            Log.d("WRITE_CONTOUR", "countour size" + String.valueOf(pArray.length));
+            for(int i = 0; i < pArray.length; i++)
+            {
+
+                Point tPoint = pArray[i];
+                if(tPoint.x < minX)
+                    minX = tPoint.x;
+
+                if(tPoint.x > maxX)
+                    maxX = tPoint.x;
+
+                if(tPoint.y < minY)
+                    minY = tPoint.y;
+
+                if(tPoint.y > maxY)
+                    maxY = tPoint.y;
+            }
+
+
+            Point xlDown = new Point(minX,minY);
+            Point xlUp = new Point(minX,maxY);
+            Point xrDown = new Point(maxX,minY);
+            Point xrUp = new Point(maxX,maxY);
+
+            double xlDownDistance = Double.MAX_VALUE;
+            double xlUpDistance = Double.MAX_VALUE;
+            double xrDownDistance = Double.MAX_VALUE;
+            double xrUpDistance = Double.MAX_VALUE;
+
+            for(int i = 0; i < pArray.length; i++)
+            {
+                Point p1 = pArray[i];
+                Point p2;
+                p2 = xlDown;
+                double localxlDownDistance = Math.sqrt(Math.pow((p2.x - p1.x), 2) + Math.pow((p2.y - p1.y), 2));
+                p2 = xlUp;
+                double localxlUpDistance = Math.sqrt(Math.pow((p2.x - p1.x), 2) + Math.pow((p2.y - p1.y), 2));
+                p2 = xrDown;
+                double localxrDownDistance = Math.sqrt(Math.pow((p2.x - p1.x), 2) + Math.pow((p2.y - p1.y), 2));
+                p2 = xrUp;
+                double localxrUpDistance = Math.sqrt(Math.pow((p2.x - p1.x), 2) + Math.pow((p2.y - p1.y), 2));
+
+                Log.d("WRITE_CONTOURS","DISTANCES : " + localxlDownDistance + " " + localxlUpDistance + " " + localxrDownDistance + " " + localxrUpDistance);
+
+                if(xlDownDistance > localxlDownDistance)
+                {
+                    xlDownDistance = localxlDownDistance;
+                    xlDown = p1;
+                }
+
+                if(xlUpDistance > localxlUpDistance)
+                {
+                    xlUpDistance = localxlUpDistance;
+                    xlUp = p1;
+                }
+
+                if(xrDownDistance > localxrDownDistance)
+                {
+                    xrDownDistance = localxrDownDistance;
+                    xrDown = p1;
+                }
+
+                if(xrUpDistance  > localxrUpDistance)
+                {
+                    xrUpDistance = localxrUpDistance;
+                    xrUp = p1;
+                }
+
+
+
+            }
+
+            Log.d("WRITE_CONTOUR","POINTS : " + xlDown.toString() + " " + xlUp.toString() + " " + xrDown.toString() + " " + xrUp.toString());
+
+            List<Point> dest = new ArrayList<Point>();
+            dest.add(xlDown);
+            dest.add(xlUp);
+            dest.add(xrUp);
+            dest.add(xrDown);
+            Mat endM = Converters.vector_Point2f_to_Mat(dest);
+
+            //Mat perspectiveTransform = Imgproc.getPerspectiveTransform(imCrop, endM);
+
+            Mat src_mat=new Mat(4,1,CvType.CV_32FC2);
+            Mat dst_mat=new Mat(4,1,CvType.CV_32FC2);
+            src_mat.put(0, 0, 407.0, 74.0, 1606.0, 74.0, 420.0, 2589.0, 1698.0, 2589.0);
+            dst_mat.put(0, 0, 0.0, 0.0, 1600.0, 0.0, 0.0, 2500.0, 1600.0, 2500.0);
+            Mat perspectiveTransform=Imgproc.getPerspectiveTransform(src_mat, dst_mat);
+
+
+            Mat outputMat = imCrop;
+            Imgproc.warpPerspective(imCrop,
+                    outputMat,
+                    perspectiveTransform,
+                    new Size(imCrop.width(), imCrop.height()),
+                    Imgproc.INTER_CUBIC);
+
+
+            Bitmap rBitmap2 = Bitmap.createBitmap(rec.width, rec.height, bBitmap.getConfig());
+            Utils.matToBitmap(imCrop, rBitmap2);
+
+
+
+            mat = new Mat(rBitmap2.getHeight(), rBitmap2.getWidth(), CvType.CV_8UC1);
+            Utils.bitmapToMat(rBitmap2, mat);
+
+            try {
+
+                MatOfPoint biggestCountourInner = getBiggestCountour(mat);
+
+                rec = Imgproc.boundingRect(biggestCountourInner);
+                Log.d("WRITE_CONTOUR",rec.toString());
+                imCrop = new Mat(imCrop, rec);
+            }
+            catch(Exception e)
+            {
+                Log.e("WRITE_CONTOUR_ERROR",e.getLocalizedMessage());
+            }
+            //  contours = new ArrayList<MatOfPoint>(1);
+         //   contours.clear();
+         //   contours.add(0, biggestCountourInner);
+         //   Imgproc.drawContours(mat, contours, 0, new Scalar(255, 0, 0),4);
+
+
+
+
+
+
+
+
+
+
+
+
+
+            rBitmap2 = Bitmap.createBitmap(rec.width, rec.height, bBitmap.getConfig());
+            Utils.matToBitmap(imCrop, rBitmap2);
+
+
+
+
+
+            return rBitmap2;
         }
 
 
@@ -461,6 +628,47 @@ public final class BitmapProcess {
         Utils.matToBitmap(mat, rBitmap);
         return rBitmap;
     }
+
+
+    public static Mat warp(Mat inputMat, Mat startM) {
+
+        int resultWidth = 1200;
+        int resultHeight = 680;
+
+        Point ocvPOut4 = new Point(0, 0);
+        Point ocvPOut1 = new Point(0, resultHeight);
+        Point ocvPOut2 = new Point(resultWidth, resultHeight);
+        Point ocvPOut3 = new Point(resultWidth, 0);
+
+        if (inputMat.height() > inputMat.width()) {
+            // int temp = resultWidth;
+            // resultWidth = resultHeight;
+            // resultHeight = temp;
+
+            ocvPOut3 = new Point(0, 0);
+            ocvPOut4 = new Point(0, resultHeight);
+            ocvPOut1 = new Point(resultWidth, resultHeight);
+            ocvPOut2 = new Point(resultWidth, 0);
+        }
+
+        Mat outputMat = new Mat(resultWidth, resultHeight, CvType.CV_8UC4);
+
+        List<Point> dest = new ArrayList<Point>();
+        dest.add(ocvPOut1);
+        dest.add(ocvPOut2);
+        dest.add(ocvPOut3);
+        dest.add(ocvPOut4);
+
+        Mat endM = Converters.vector_Point2f_to_Mat(dest);
+
+        Mat perspectiveTransform = Imgproc.getPerspectiveTransform(startM, endM);
+
+        Imgproc.warpPerspective(inputMat, outputMat, perspectiveTransform, new Size(resultWidth, resultHeight), Imgproc.INTER_CUBIC);
+
+        return outputMat;
+    }
+
+
 
 
     public static Bitmap OpenCVCanny(Bitmap bitmap, int mCannyMin, int mCannyMax, int mCannyOpt)

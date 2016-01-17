@@ -65,7 +65,7 @@ public class CameraViewFragment3 extends Fragment {
     private Size mPreviewSize;
     private Semaphore mCameraOpenCloseLock = new Semaphore(1);
     private CameraCaptureSession mCaptureSession;
-
+    private final int mImageFactor = 16;
     private SurfaceTexture mSurfaceTexture;
     private SurfaceTexture mBitmapSurfaceTexture;
     private Surface surface;
@@ -73,6 +73,7 @@ public class CameraViewFragment3 extends Fragment {
     private ImageReader mCaptureBuffer;
     private ImageReader mPhotoBuffer;
     private HandlerThread mBackgroundThread;
+    private HandlerThread mCropperThread;
     private static RenderingThread mThread;
     private PreviewThread mPreviewThread;
 
@@ -144,6 +145,7 @@ public class CameraViewFragment3 extends Fragment {
     private Handler mBackgroundHandler2;
     private HandlerThread mBackgroundThread2;
 
+
     private boolean mTakeShot = false;
     private ImageReader mImageReader;
     private int mState;
@@ -151,6 +153,7 @@ public class CameraViewFragment3 extends Fragment {
     private int mCaptureBufferWidth;
     private int mCaptureBufferHeight;
     private Matrix mCurrentTransformMatrix;
+    private Handler mCropperHandler;
 
 
     public interface CustomRunnable<T> {
@@ -296,6 +299,15 @@ public class CameraViewFragment3 extends Fragment {
         mBackgroundThread2 = new HandlerThread("background2");
         mBackgroundThread2.start();
         mBackgroundHandler2 = new Handler(mBackgroundThread2.getLooper());
+
+        mCropperThread = new HandlerThread("cropper");
+        mCropperThread.start();
+
+        mCropperHandler = new Handler(mCropperThread.getLooper());
+
+
+
+
         mBitmapTextureView = (TextureView) view.findViewById(R.id.textureView3);
         mBitmapTextureView.setWillNotDraw(false);
         mBitmapTextureView.setOpaque(false);
@@ -327,7 +339,9 @@ public class CameraViewFragment3 extends Fragment {
                 int xPos = (int) v.getX();
                 int yPos = (int) v.getY();
                 Log.i("BITMAP", "Click position. " + "X : " + xPos + " Y : " + yPos + " LEFT : " + v.getLeft() + " RIGHT : " + v.getRight() + " RAW X : " + event.getX() + "RAW Y : " + event.getY() + " TIME " );
+
                 takePicture();
+
                 return false;
             }
         });
@@ -431,11 +445,9 @@ public class CameraViewFragment3 extends Fragment {
         public void onImageAvailable(ImageReader reader) {
             try {
                 Image image = reader.acquireNextImage();
-                mBackgroundHandler.post(new ImageCropper(image, mFile, mThread.getLatestMat()));
-            }
-            catch(Exception e)
-            {
-                Log.e("IMAGE",e.getLocalizedMessage());
+                mCropperHandler.post(new ImageCropper(image, mFile, mThread.getLatestMat(), mCurrentTransformMatrix));
+            } catch (Exception e) {
+                Log.e("IMAGE", e.getLocalizedMessage());
             }
         }
     };
@@ -453,9 +465,14 @@ public class CameraViewFragment3 extends Fragment {
 
     public void takePicture()
     {
-        mFile = new File(getActivity().getExternalFilesDir(null), String.valueOf(System.currentTimeMillis()) + "pic.jpg");
-        mTakeShot = true;
-        lockFocus();
+       // if(mState != null)
+       // {
+
+
+            mFile = new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "pic");
+            mTakeShot = true;
+            lockFocus();
+      //  }
     }
 
     private void lockFocus() {
@@ -509,8 +526,8 @@ public class CameraViewFragment3 extends Fragment {
                 mImageReader.setOnImageAvailableListener(
                         mOnImageAvailableListener, mBackgroundHandler);
 
-                mCaptureBufferWidth = largest.getWidth() / 16;
-                mCaptureBufferHeight = largest.getHeight() / 16;
+                mCaptureBufferWidth = largest.getWidth() / mImageFactor;
+                mCaptureBufferHeight = largest.getHeight() / mImageFactor;
 
                 mCaptureBuffer = ImageReader.newInstance(mCaptureBufferWidth, mCaptureBufferHeight, ImageFormat.YUV_420_888, /*maxImages*/2);
                 mCaptureBuffer.setOnImageAvailableListener(mImageCaptureListener, mBackgroundHandler2);
@@ -615,6 +632,11 @@ public class CameraViewFragment3 extends Fragment {
         mCurrentTransformMatrix = matrix;
         mSurfaceTextureView.setTransform(matrix);
 
+
+        Matrix bitmapMatrix = matrix;
+        bitmapMatrix.postRotate(90, centerX, centerY);
+
+        mBitmapTextureView.setTransform(bitmapMatrix);
     }
 
     /**
@@ -664,6 +686,7 @@ public class CameraViewFragment3 extends Fragment {
             }
             mPreviewThread.stopRendering();
             mPreviewThread.join();
+
         } catch (InterruptedException e) {
             throw new RuntimeException("Interrupted while trying to lock camera closing.", e);
         } finally {
