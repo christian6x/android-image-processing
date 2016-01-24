@@ -77,6 +77,7 @@ public class ImageCropper implements Runnable {
     //    Bitmap mBitmap = mBitmapMat.getBitmap();
     //    Bitmap bitmap = Bitmap.createScaledBitmap(pBitmap, mImage.getWidth(), mImage.getHeight(), true);
         Log.i("CROPPER_TIME","Processing contours bitmap");
+        Bitmap original = mBitmapMat.getBitmap();
         Bitmap bitmap = BitmapProcess.WriteCountoursOnBitmap(pBitmap, mBitmapMat);
         mBitmapMat.setBitmap(bitmap);
 
@@ -87,10 +88,11 @@ public class ImageCropper implements Runnable {
         try {
             Log.i("CROPPER_TIME","Writing files");
             output = new FileOutputStream(mFile+".jpg");
-          //  outputBitmap = new FileOutputStream(mFile+"_BITMAP.jpg");
+
+            outputBitmap = new FileOutputStream(mFile+"org"+".jpg");
             bitmap.compress(Bitmap.CompressFormat.JPEG, 100, output);
         //    byte[] byteArray = stream.toByteArray();
-        //    bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputBitmap);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputBitmap);
            // output.write(bytes);
         //    outputBitmap.write(bytes);
 
@@ -100,7 +102,7 @@ public class ImageCropper implements Runnable {
             if (null != output) {
                 try {
                     output.close();
-                    //outputBitmap.close();
+                    outputBitmap.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

@@ -459,10 +459,17 @@ public final class BitmapProcess {
             }
 
 
+
+
             Point xlDown = new Point(minX,minY);
             Point xlUp = new Point(minX,maxY);
             Point xrDown = new Point(maxX,minY);
             Point xrUp = new Point(maxX,maxY);
+
+            Point maxxlDown = new Point(minX,minY);
+            Point maxxlUp = new Point(minX,maxY);
+            Point maxxrDown = new Point(maxX,minY);
+            Point maxxrUp = new Point(maxX,maxY);
 
             double xlDownDistance = Double.MAX_VALUE;
             double xlUpDistance = Double.MAX_VALUE;
@@ -471,23 +478,27 @@ public final class BitmapProcess {
 
             for(int i = 0; i < pArray.length; i++)
             {
+                Log.d("WRITE_CONTOURS","DISTANCES BASE : " + xlDownDistance + " " + xlUpDistance + " " + xrDownDistance + " " + xrUpDistance);
+
                 Point p1 = pArray[i];
                 Point p2;
-                p2 = xlDown;
+                p2 = maxxlDown;
                 double localxlDownDistance = Math.sqrt(Math.pow((p2.x - p1.x), 2) + Math.pow((p2.y - p1.y), 2));
-                p2 = xlUp;
+                Log.d("WRITE_CONTOURS","EQUATIONS" + p2.toString() + " " + p1.toString());
+                p2 = maxxlUp;
                 double localxlUpDistance = Math.sqrt(Math.pow((p2.x - p1.x), 2) + Math.pow((p2.y - p1.y), 2));
-                p2 = xrDown;
+                p2 = maxxrDown;
                 double localxrDownDistance = Math.sqrt(Math.pow((p2.x - p1.x), 2) + Math.pow((p2.y - p1.y), 2));
-                p2 = xrUp;
+                p2 = maxxrUp;
                 double localxrUpDistance = Math.sqrt(Math.pow((p2.x - p1.x), 2) + Math.pow((p2.y - p1.y), 2));
 
-                Log.d("WRITE_CONTOURS","DISTANCES : " + localxlDownDistance + " " + localxlUpDistance + " " + localxrDownDistance + " " + localxrUpDistance);
+                Log.d("WRITE_CONTOURS","DISTANCES PROCESSED : " + localxlDownDistance + " " + localxlUpDistance + " " + localxrDownDistance + " " + localxrUpDistance);
 
                 if(xlDownDistance > localxlDownDistance)
                 {
                     xlDownDistance = localxlDownDistance;
                     xlDown = p1;
+                    Log.d("WRITE_CONTOURS","p1 : " + xlDown.toString());
                 }
 
                 if(xlUpDistance > localxlUpDistance)
@@ -521,13 +532,24 @@ public final class BitmapProcess {
             dest.add(xrDown);
             Mat endM = Converters.vector_Point2f_to_Mat(dest);
 
-            //Mat perspectiveTransform = Imgproc.getPerspectiveTransform(imCrop, endM);
 
-            Mat src_mat=new Mat(4,1,CvType.CV_32FC2);
-            Mat dst_mat=new Mat(4,1,CvType.CV_32FC2);
-            src_mat.put(0, 0, 407.0, 74.0, 1606.0, 74.0, 420.0, 2589.0, 1698.0, 2589.0);
-            dst_mat.put(0, 0, 0.0, 0.0, 1600.0, 0.0, 0.0, 2500.0, 1600.0, 2500.0);
-            Mat perspectiveTransform=Imgproc.getPerspectiveTransform(src_mat, dst_mat);
+            List<Point> src = new ArrayList<Point>();
+            src.add(maxxlDown);
+            src.add(maxxlUp);
+            src.add(maxxrUp);
+            src.add(maxxrDown);
+
+            Mat src_mat = Converters.vector_Point2f_to_Mat(src);
+
+            Mat perspectiveTransform = Imgproc.getPerspectiveTransform(src_mat, endM);
+
+
+
+//            Mat src_mat=new Mat(4,1,CvType.CV_32FC2);
+//            Mat dst_mat=new Mat(4,1,CvType.CV_32FC2);
+//            src_mat.put(0, 0, 407.0, 74.0, 1606.0, 74.0, 420.0, 2589.0, 1698.0, 2589.0);
+//            dst_mat.put(0, 0, 0.0, 0.0, 1600.0, 0.0, 0.0, 2500.0, 1600.0, 2500.0);
+//            Mat perspectiveTransform=Imgproc.getPerspectiveTransform(src_mat, dst_mat);
 
 
             Mat outputMat = imCrop;
