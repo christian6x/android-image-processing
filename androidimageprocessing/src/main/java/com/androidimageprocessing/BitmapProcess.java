@@ -22,6 +22,9 @@ import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.utils.Converters;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.sql.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -390,6 +393,19 @@ public final class BitmapProcess {
         return bCoutnour;
     }
 
+    public static void SaveFile(Bitmap bitmap, File file)
+    {
+        FileOutputStream output = null;
+        try {
+            output = new FileOutputStream(file+".jpg");
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, output);
+            output.close();
+        } catch (java.io.IOException e) {
+            e.printStackTrace();
+        }
+
+
+    }
 
     public static Bitmap WriteCountoursOnBitmap(Bitmap bitmap, BitmapMat bitmapMat)
     {
@@ -399,6 +415,8 @@ public final class BitmapProcess {
         // Pusta bitmapa o wymiarach bitmapy z nałozonymi countarami
         // Nakładam na nią countour
         Bitmap rBitmap = Bitmap.createBitmap(bBitmap.getWidth(), bBitmap.getHeight(), bBitmap.getConfig());
+
+        SaveFile(bBitmap, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "original"));
 
 
         // Mapa wejściowych countour. Z niej tworzymy mat z countour w skali
@@ -411,10 +429,14 @@ public final class BitmapProcess {
 
         Mat mat2 = new Mat(rBitmap.getHeight(), rBitmap.getWidth(), CvType.CV_8UC1);
         Log.i("IMGHX", "BCOUNTOUR not empty" + bCoutnour.width() + " " + bCoutnour.height());
-        Imgproc.drawContours(mat2, contours, 0, new Scalar(255, 255, 255),4);
+        Imgproc.drawContours(mat2, contours, 0, new Scalar(255, 255, 255), 4);
         Imgproc.resize(mat2, mat2, new Size(bitmap.getWidth(), bitmap.getHeight()));
 
-       // Imgproc.resize(mat2, mat2, new Size(bitmap.getWidth(), bitmap.getHeight()));
+        SaveFile(bitmap, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "bitmap_resize"));
+
+
+
+        // Imgproc.resize(mat2, mat2, new Size(bitmap.getWidth(), bitmap.getHeight()));
         // mat2 powinno być w skali
         if(!mat2.empty()) {
             MatOfPoint biggestCountour = getBiggestCountour(mat2);
@@ -523,7 +545,6 @@ public final class BitmapProcess {
 
             }
 
-            Log.d("WRITE_CONTOUR","POINTS : " + xlDown.toString() + " " + xlUp.toString() + " " + xrDown.toString() + " " + xrUp.toString());
 
             List<Point> dest = new ArrayList<Point>();
             dest.add(xlDown);
@@ -533,17 +554,47 @@ public final class BitmapProcess {
             Mat endM = Converters.vector_Point2f_to_Mat(dest);
 
 
+            Bitmap bb = bitmap;
+            Mat matBb = new Mat(bb.getHeight(), bb.getWidth(), CvType.CV_8UC1);
+            Utils.bitmapToMat(bb, matBb);
+            // Mat na którym rysujemy countour
+
+            Imgproc.circle(matBb,xlDown,10,new Scalar(255, 255, 255),4);
+            Imgproc.circle(matBb,xlUp,10,new Scalar(255, 255, 255),4);
+            Imgproc.circle(matBb, xrUp, 10, new Scalar(255, 255, 255), 4);
+            Imgproc.circle(matBb, xrDown, 10, new Scalar(255, 255, 255), 4);
+            Utils.matToBitmap(matBb, bb);
+            SaveFile(bb, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "circle_"));
+
+            Bitmap bb2 = bitmap;
+            matBb = new Mat(bb2.getHeight(), bb2.getWidth(), CvType.CV_8UC1);
+            Utils.bitmapToMat(bb2, matBb);
+            // Mat na którym rysujemy countour
+
+            Imgproc.circle(matBb,maxxlDown,10,new Scalar(255, 255, 0),4);
+            Imgproc.circle(matBb,maxxlUp,10,new Scalar(255, 255, 0),4);
+            Imgproc.circle(matBb,maxxrUp,10,new Scalar(255, 255, 0),4);
+            Imgproc.circle(matBb,maxxrDown,10,new Scalar(255, 255, 0),4);
+            Utils.matToBitmap(matBb, bb2);
+            SaveFile(bb2,new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "circle_new_"));
+
             List<Point> src = new ArrayList<Point>();
             src.add(maxxlDown);
             src.add(maxxlUp);
             src.add(maxxrUp);
             src.add(maxxrDown);
 
+            Log.d("WRITE_CONTOUR", "TRANSFORM : " + xlDown.toString() + "," + xlUp.toString() + "," + xrDown.toString() + "," + xrUp.toString() + " TO " +
+            maxxlDown.toString() + "," + maxxlUp.toString() + "," + maxxrDown.toString() + "," +maxxrUp.toString());
+
+
+
+
             Mat src_mat = Converters.vector_Point2f_to_Mat(src);
 
             Mat perspectiveTransform = Imgproc.getPerspectiveTransform(src_mat, endM);
 
-
+            Log.d("WRITE_CONTOUR","PERSPECTIVE_TRANSFORM" + perspectiveTransform.toString());
 
 //            Mat src_mat=new Mat(4,1,CvType.CV_32FC2);
 //            Mat dst_mat=new Mat(4,1,CvType.CV_32FC2);
