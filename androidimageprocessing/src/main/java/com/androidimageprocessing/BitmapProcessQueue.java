@@ -1,6 +1,7 @@
 package com.androidimageprocessing;
 
 import android.graphics.Bitmap;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -10,11 +11,18 @@ import java.util.Iterator;
  */
 public class BitmapProcessQueue extends ArrayList {
 
+    private boolean mDebug = false;
     private ArrayList<BitmapProcessInterface> mFilters;
 
     public BitmapProcessQueue()
     {
          this.mFilters = new ArrayList<BitmapProcessInterface>();
+    }
+
+    public BitmapProcessQueue(boolean debug)
+    {
+        this.mDebug = debug;
+        this.mFilters = new ArrayList<BitmapProcessInterface>();
     }
 
 
@@ -24,6 +32,8 @@ public class BitmapProcessQueue extends ArrayList {
         Bitmap cBitmap;
         while(it.hasNext())
         {
+            if(mDebug)
+                Log.d("BitmapProcessQueue","Processing ... ");
             BitmapProcessInterface next  = it.next();
             cBitmap = next.process(bitmapMat.getBitmap());
             bitmapMat.setBitmap(cBitmap);
@@ -31,6 +41,12 @@ public class BitmapProcessQueue extends ArrayList {
         }
 
         return bitmapMat;
+    }
+
+    public BitmapMat process(BitmapMat bitmapMat, boolean debug)
+    {
+        this.mDebug = debug;
+        return process(bitmapMat);
     }
 
 }

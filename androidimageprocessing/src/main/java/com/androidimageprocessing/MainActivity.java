@@ -830,7 +830,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             mCameraDevice.createCaptureSession(Arrays.asList(surface),
                     new CameraCaptureSession.StateCallback() {
                         private void process(CaptureResult result) {
-                            System.out.println("Processsssss");
 
                         }
 

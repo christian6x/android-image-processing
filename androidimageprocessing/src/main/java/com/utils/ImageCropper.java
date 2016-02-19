@@ -7,6 +7,7 @@ import android.media.Image;
 
 import com.androidimageprocessing.BitmapMat;
 import com.androidimageprocessing.BitmapProcess;
+import com.androidimageprocessing.BitmapProcessQueue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -27,13 +28,13 @@ public class ImageCropper implements Runnable {
     /**
      * The JPEG image
      */
-    private final Image mImage;
+    private Image mImage;
     /**
      * The file we save the image into.
      */
-    private final File mFile;
+    private File mFile;
 
-    private final BitmapMat mBitmapMat;
+    private BitmapMat mBitmapMat;
     private Matrix mTransformMatrix;
 
     public ImageCropper(Image image, File file, BitmapMat latestMat) {
@@ -47,6 +48,45 @@ public class ImageCropper implements Runnable {
         mFile = file;
         mBitmapMat = latestMat;
         mTransformMatrix = rotation;
+    }
+
+    public ImageCropper(Image image, File mFile, BitmapMat latestMat, Matrix mCurrentTransformMatrix, BitmapProcessQueue mProcessList) {
+        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+        byte[] bytes = new byte[buffer.remaining()];
+        buffer.get(bytes);
+
+        Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+
+        Log.i("ImageCropper","Bitmap decoded");
+
+
+
+        Log.i("ImageCropper","Begin processing");
+
+        //BitmapProcessQueue copyQueue = (BitmapProcessQueue) mProcessList.clone();
+
+        bitmap = BitmapProcess.OpenCVNormalize(bitmap);
+        Log.i("ImageCropper","Normalised");
+        BitmapMat bitMat = new BitmapMat(bitmap);
+        bitMat = BitmapProcess.OpenCVFindCountours(bitMat,true);
+        Log.i("ImageCropper","Found Contours");
+
+        bitmap = bitMat.getBitmap();
+        //return BitmapProcess.OpenCVNormalize(bitmap);
+        //return BitmapProcess.OpenCVFindCountours(bitmapMat);
+
+
+        //bitMat= copyQueue.process(bitMat,true);
+        //bitmap = bitMat.getBitmap();
+
+        Log.i("ImageCropper","Processing Completed");
+
+
+        //bitmap = BitmapProcess.WriteCountoursOnBitmap(bitmap, mBitmapMat);
+
+        BitmapProcess.SaveFile(bitmap,new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "PROCESSED_MAX"));
+
+
     }
 
 
@@ -78,6 +118,8 @@ public class ImageCropper implements Runnable {
     //    Bitmap bitmap = Bitmap.createScaledBitmap(pBitmap, mImage.getWidth(), mImage.getHeight(), true);
         Log.i("CROPPER_TIME","Processing contours bitmap");
         Bitmap original = mBitmapMat.getBitmap();
+
+
         Bitmap bitmap = BitmapProcess.WriteCountoursOnBitmap(pBitmap, mBitmapMat);
         mBitmapMat.setBitmap(bitmap);
 

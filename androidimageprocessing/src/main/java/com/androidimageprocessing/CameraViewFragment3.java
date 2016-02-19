@@ -445,6 +445,8 @@ public class CameraViewFragment3 extends Fragment {
         public void onImageAvailable(ImageReader reader) {
             try {
                 Image image = reader.acquireNextImage();
+                //new ImageCropper(image, mFile, mThread.getLatestMat(), mCurrentTransformMatrix, mThread.mProcessList);
+                //mCropperHandler.post(new ImageCropper(image, mFile, mThread.getLatestMat(), mCurrentTransformMatrix, mThread.mProcessList));
                 mCropperHandler.post(new ImageCropper(image, mFile, mThread.getLatestMat(), mCurrentTransformMatrix));
             } catch (Exception e) {
                 Log.e("IMAGE", e.getLocalizedMessage());
@@ -801,8 +803,6 @@ private void captureStillPicture() {
             public void onCaptureCompleted(@NonNull CameraCaptureSession session,
                                            @NonNull CaptureRequest request,
                                            @NonNull TotalCaptureResult result) {
-               // showToast("Saved: " + mFile);
-              //  Log.d(TAG, mFile.toString());
                 unlockFocus();
             }
         };
