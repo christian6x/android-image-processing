@@ -675,6 +675,7 @@ public final class BitmapProcess {
 
 
 
+
             Point xlDown = new Point(minX,minY);
             Point xlUp = new Point(minX,maxY);
             Point xrDown = new Point(maxX,minY);
@@ -807,6 +808,53 @@ public final class BitmapProcess {
             points[2] = pMM;
             points[3] = pOM;
 
+
+
+            Point pAcurateOO = new Point();
+            Point pAcurateOM = new Point();
+            Point pAcurateMO = new Point();
+            Point pAcurateMM = new Point();
+
+            double minAcurateOO = Double.MAX_VALUE;
+            double minAcurateOM = Double.MAX_VALUE;
+            double minAcurateMO = Double.MAX_VALUE;
+            double minAcurateMM = Double.MAX_VALUE;
+
+            for(int i = 0; i < pArray.length; i++)
+            {
+                Point tPoint = pArray[i];
+
+                currentCalculation = CalculateDistance(pOO,tPoint );
+                if(minAcurateOO > currentCalculation)
+                {
+                    pAcurateOO = tPoint;
+                    minAcurateOO = currentCalculation;
+                }
+
+                currentCalculation = CalculateDistance(pOM,tPoint );
+                if(minAcurateOM > currentCalculation)
+                {
+                    pAcurateOM = tPoint;
+                    minAcurateOM = currentCalculation;
+                }
+
+                currentCalculation = CalculateDistance(pMM,tPoint );
+                if(minAcurateMM > currentCalculation)
+                {
+                    pAcurateMM = tPoint;
+                    minAcurateMM = currentCalculation;
+                }
+
+                currentCalculation = CalculateDistance(pMO,tPoint );
+                if(minAcurateMO > currentCalculation)
+                {
+                    pAcurateMO = tPoint;
+                    minAcurateMO = currentCalculation;
+                }
+            }
+
+
+
             Log.d("BitmapProcess","NEAREAST OO : " + points[0] + "(" + OO +")"  + "\nNEAREST MO : " + points[1] + "(" + MO +")" + "\nNEAREST MM : " + points[2] + "(" + MM +")" + "\nNEAREST OM : " + points[3] + "(" + OM +")");
 
 
@@ -816,7 +864,19 @@ public final class BitmapProcess {
             //dest.add(xrUp);
             //dest.add(xrDown);
 
+            points2[0] = pAcurateOO;
+            points2[1] = pAcurateMO;
+            points2[2] = pAcurateMM;
+            points2[3] = pAcurateOM;
 
+
+
+
+
+            points[0] = pOO;
+            points[1] = pMO;
+            points[2] = pMM;
+            points[3] = pOM;
 
             dest.add(points[0]);
             dest.add(points[1]);
@@ -824,7 +884,7 @@ public final class BitmapProcess {
             dest.add(points[3]);
 
 
-            Mat endM = Converters.vector_Point2f_to_Mat(dest);
+
 
 
             double p1 = Math.sqrt(Math.pow((points[1].x - points[0].x), 2) + Math.pow((points[1].y - points[0].y), 2));
@@ -929,6 +989,13 @@ public final class BitmapProcess {
             Imgproc.circle(imCrop, points[2], 10, new Scalar(0,255,0), 4);   // MAX MAX
             Imgproc.circle(imCrop, points[3], 10, new Scalar(0,255,0), 4);   // 0   MAX
 
+            Imgproc.circle(imCrop, points2[0], 10, new Scalar(0,255,255), 4);     // 0,  0
+            Imgproc.circle(imCrop, points2[1], 10, new Scalar(0,255,255), 4); // MAX 0
+            Imgproc.circle(imCrop, points2[2], 10, new Scalar(0,255,255), 4);   // MAX MAX
+            Imgproc.circle(imCrop, points2[3], 10, new Scalar(0,255,255), 4);   // 0   MAX
+
+
+
 
             Bitmap rBitmap5 = Bitmap.createBitmap(imCrop.width(), imCrop.height(), bBitmap.getConfig());
             Utils.matToBitmap(imCrop, rBitmap5);
@@ -975,6 +1042,17 @@ public final class BitmapProcess {
 
             Mat src_mat = Converters.vector_Point2f_to_Mat(src);
 
+            dest.clear();
+            dest.add(points2[0]);
+            dest.add(points2[1]);
+            dest.add(points2[2]);
+            dest.add(points2[3]);
+
+
+            Mat endM = Converters.vector_Point2f_to_Mat(dest);
+
+
+
 //            Mat perspectiveTransform = Imgproc.getPerspectiveTransform(src_mat, endM);
             Mat perspectiveTransform = Imgproc.getPerspectiveTransform(endM, src_mat);
             Log.d("WRITE_CONTOUR","PERSPECTIVE_TRANSFORM" + perspectiveTransform.toString());
@@ -1006,122 +1084,133 @@ public final class BitmapProcess {
                     Imgproc.INTER_CUBIC);
             imCrop.release();
 
-            rBitmap2 = Bitmap.createBitmap(rec.width, rec.height, bBitmap.getConfig());
-            Utils.matToBitmap(outputMat, rBitmap2);
+
+          //  Rect rec2 = new Rect(new Point(points[0].x, points[0].y), new Point(points[2].x, points[2].y));
+
+            Rect rec2 = new Rect( (int) maxxlDown.x, (int) maxxlDown.y, (int) (maxxrDown.x - maxxlDown.x), (int) (maxxrUp.y - maxxlDown.y));
+
+//            Imgproc.circle(matBb, maxxlDown, 10, colors[0], 4);     // 0,  0
+//            Imgproc.circle(matBb, maxxrDown, 10, colors[1], 4); // MAX 0
+//            Imgproc.circle(matBb, maxxrUp, 10, colors[2], 4);   // MAX MAX
+//            Imgproc.circle(matBb, maxxlUp, 10, colors[3], 4);   // 0   MAX
+
+            imCrop=  new Mat(outputMat,rec2);
+            rBitmap2 = Bitmap.createBitmap(imCrop.width(), imCrop.height(), bBitmap.getConfig());
+            Utils.matToBitmap(imCrop, rBitmap2);
             SaveFile(rBitmap2, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "POSSIBLE_ROTATED_I"));
+            imCrop.release();
 
+//            // ***********************
+//            try {
+//            // outputMat = imCrop;
+//            // outputMat = new Mat((int) minRect.size.height, (int) minRect.size.width, imCrop.type());
+//            imCrop = imCropCopy.clone();
+//            outputMat = new Mat(bitmap.getHeight(),bitmap.getWidth(),imCrop.type());
+//
+//            perspectiveTransform = Imgproc.getPerspectiveTransform(src_mat, endM);
+//            Imgproc.warpPerspective(imCrop,
+//                    outputMat,
+//                    perspectiveTransform,
+//                    new Size(outputMat.width(), outputMat.height()),
+//                    Imgproc.INTER_CUBIC);
+//                imCrop.release();
+//
+//            Imgproc.circle(outputMat, maxxlDown, 10, new Scalar(255,0,0), 4);     // 0,  0
+//            Imgproc.circle(outputMat, maxxrDown, 10, new Scalar(255,0,0), 4); // MAX 0
+//            Imgproc.circle(outputMat, maxxrUp, 10, new Scalar(255,0,0), 4);   // MAX MAX
+//            Imgproc.circle(outputMat, maxxlUp, 10, new Scalar(255,0,0), 4);   // 0   MAX
+//
+//
+//                Imgproc.circle(outputMat, points[0], 10, new Scalar(255,255,0), 4);     // 0,  0
+//                Imgproc.circle(outputMat, points[1], 10, new Scalar(255,255,0), 4); // MAX 0
+//                Imgproc.circle(outputMat, points[2], 10, new Scalar(255, 255, 0), 4);   // MAX MAX
+//                Imgproc.circle(outputMat, points[3], 10, new Scalar(255, 255, 0), 4);   // 0   MAX
+//
+//
+//
+//            rBitmap2 = Bitmap.createBitmap(outputMat.width(), outputMat.height(), bBitmap.getConfig());
+//                Utils.matToBitmap(outputMat, rBitmap2);
+//            SaveFile(rBitmap2, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "POSSIBLE_ROTATED_III"));
+//
+//            }
+//            catch (Exception e)
+//            {
+//                Log.d("BitmapProcess", "POSSIBLE_ROTATED_III ERROR : " + e.getLocalizedMessage(),e);
+//
+//                e.printStackTrace();
+//            }
 
-            // ***********************
-            try {
-            // outputMat = imCrop;
-            // outputMat = new Mat((int) minRect.size.height, (int) minRect.size.width, imCrop.type());
-            imCrop = imCropCopy.clone();
-            outputMat = new Mat(bitmap.getHeight(),bitmap.getWidth(),imCrop.type());
-
-            perspectiveTransform = Imgproc.getPerspectiveTransform(src_mat, endM);
-            Imgproc.warpPerspective(imCrop,
-                    outputMat,
-                    perspectiveTransform,
-                    new Size(outputMat.width(), outputMat.height()),
-                    Imgproc.INTER_CUBIC);
-                imCrop.release();
-
-            Imgproc.circle(outputMat, maxxlDown, 10, new Scalar(255,0,0), 4);     // 0,  0
-            Imgproc.circle(outputMat, maxxrDown, 10, new Scalar(255,0,0), 4); // MAX 0
-            Imgproc.circle(outputMat, maxxrUp, 10, new Scalar(255,0,0), 4);   // MAX MAX
-            Imgproc.circle(outputMat, maxxlUp, 10, new Scalar(255,0,0), 4);   // 0   MAX
-
-
-                Imgproc.circle(outputMat, points[0], 10, new Scalar(255,255,0), 4);     // 0,  0
-                Imgproc.circle(outputMat, points[1], 10, new Scalar(255,255,0), 4); // MAX 0
-                Imgproc.circle(outputMat, points[2], 10, new Scalar(255, 255, 0), 4);   // MAX MAX
-                Imgproc.circle(outputMat, points[3], 10, new Scalar(255, 255, 0), 4);   // 0   MAX
-
-
-
-            rBitmap2 = Bitmap.createBitmap(outputMat.width(), outputMat.height(), bBitmap.getConfig());
-                Utils.matToBitmap(outputMat, rBitmap2);
-            SaveFile(rBitmap2, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "POSSIBLE_ROTATED_III"));
-
-            }
-            catch (Exception e)
-            {
-                Log.d("BitmapProcess", "POSSIBLE_ROTATED_III ERROR : " + e.getLocalizedMessage(),e);
-
-                e.printStackTrace();
-            }
-
-            // ***********************
-            try {
-                perspectiveTransform = Imgproc.getPerspectiveTransform(endM, src_mat);
-                imCrop = imCropCopy.clone();
-                outputMat = imCrop;
-
-                Imgproc.warpPerspective(imCrop,
-                        outputMat,
-                        perspectiveTransform,
-                        new Size(imCrop.width(), imCrop.height()),
-                        Imgproc.INTER_CUBIC);
-                imCrop.release();
-                rBitmap2 = Bitmap.createBitmap(rec.height, rec.width, bBitmap.getConfig());
-                Utils.matToBitmap(outputMat, rBitmap2);
-                SaveFile(rBitmap2, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "POSSIBLE_ROTATED_IIII"));
-
-            }
-            catch (Exception e)
-            {
-                Log.d("BitmapProcess", "POSSIBLE_ROTATED_IIII ERROR");
-                e.printStackTrace();
-            }
-            // ***********************
-
-
-            // ***********************
-            try {
-                imCrop = imCropCopy.clone();
-                perspectiveTransform = Imgproc.getPerspectiveTransform(endM, src_mat);
-                outputMat = imCrop;
-                Imgproc.warpPerspective(imCrop,
-                        outputMat,
-                        perspectiveTransform,
-                        new Size(imCrop.height(),imCrop.width()),
-                        Imgproc.INTER_CUBIC);
-
-                rBitmap2 = Bitmap.createBitmap(rec.width, rec.height, bBitmap.getConfig());
-                imCrop.release();
-                Utils.matToBitmap(outputMat, rBitmap2);
-                SaveFile(rBitmap2, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "POSSIBLE_ROTATED_IIIII"));
-
-            }
-            catch (Exception e)
-            {
-                Log.d("BitmapProcess", "POSSIBLE_ROTATED_IIIII ERROR");
-                e.printStackTrace();
-            }
-            // ***********************
-
-            // ***********************
-            try {
-                perspectiveTransform = Imgproc.getPerspectiveTransform(endM, src_mat);
-                outputMat = imCrop;
-                Imgproc.warpPerspective(imCrop,
-                        outputMat,
-                        perspectiveTransform,
-                        new Size(imCrop.height(),imCrop.width()),
-                        Imgproc.INTER_CUBIC);
-
-                rBitmap2 = Bitmap.createBitmap(rec.height, rec.width, bBitmap.getConfig());
-
-                Utils.matToBitmap(outputMat, rBitmap2);
-                SaveFile(rBitmap2, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "POSSIBLE_ROTATED_IIIIII"));
-
-            }
-            catch (Exception e)
-            {
-                Log.d("BitmapProcess", "POSSIBLE_ROTATED_IIIIII ERROR");
-                e.printStackTrace();
-            }
-            // ***********************
+//            // ***********************
+//            try {
+//                perspectiveTransform = Imgproc.getPerspectiveTransform(endM, src_mat);
+//                imCrop = imCropCopy.clone();
+//                outputMat = imCrop;
+//
+//                Imgproc.warpPerspective(imCrop,
+//                        outputMat,
+//                        perspectiveTransform,
+//                        new Size(imCrop.width(), imCrop.height()),
+//                        Imgproc.INTER_CUBIC);
+//                imCrop.release();
+//                rBitmap2 = Bitmap.createBitmap(rec.height, rec.width, bBitmap.getConfig());
+//                Utils.matToBitmap(outputMat, rBitmap2);
+//                SaveFile(rBitmap2, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "POSSIBLE_ROTATED_IIII"));
+//
+//            }
+//            catch (Exception e)
+//            {
+//                Log.d("BitmapProcess", "POSSIBLE_ROTATED_IIII ERROR");
+//                e.printStackTrace();
+//            }
+//            // ***********************
+//
+//
+//            // ***********************
+//            try {
+//                imCrop = imCropCopy.clone();
+//                perspectiveTransform = Imgproc.getPerspectiveTransform(endM, src_mat);
+//                outputMat = imCrop;
+//                Imgproc.warpPerspective(imCrop,
+//                        outputMat,
+//                        perspectiveTransform,
+//                        new Size(imCrop.height(),imCrop.width()),
+//                        Imgproc.INTER_CUBIC);
+//
+//                rBitmap2 = Bitmap.createBitmap(rec.width, rec.height, bBitmap.getConfig());
+//                imCrop.release();
+//                Utils.matToBitmap(outputMat, rBitmap2);
+//                SaveFile(rBitmap2, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "POSSIBLE_ROTATED_IIIII"));
+//
+//            }
+//            catch (Exception e)
+//            {
+//                Log.d("BitmapProcess", "POSSIBLE_ROTATED_IIIII ERROR");
+//                e.printStackTrace();
+//            }
+//            // ***********************
+//
+//            // ***********************
+//            try {
+//                perspectiveTransform = Imgproc.getPerspectiveTransform(endM, src_mat);
+//                outputMat = imCrop;
+//                Imgproc.warpPerspective(imCrop,
+//                        outputMat,
+//                        perspectiveTransform,
+//                        new Size(imCrop.height(),imCrop.width()),
+//                        Imgproc.INTER_CUBIC);
+//
+//                rBitmap2 = Bitmap.createBitmap(rec.height, rec.width, bBitmap.getConfig());
+//
+//                Utils.matToBitmap(outputMat, rBitmap2);
+//                SaveFile(rBitmap2, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "POSSIBLE_ROTATED_IIIIII"));
+//
+//            }
+//            catch (Exception e)
+//            {
+//                Log.d("BitmapProcess", "POSSIBLE_ROTATED_IIIIII ERROR");
+//                e.printStackTrace();
+//            }
+//            // ***********************
 
             SaveFile(bitmap, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "POSSIBLE_NON_ROTATED"));
 
