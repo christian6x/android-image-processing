@@ -341,11 +341,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 mProcessList.add(new BitmapProcessInterface() {
                     @Override
                     public Bitmap process(Bitmap bitmap) {
+
                         return BitmapProcess.OpenCVSobel(bitmap);
                     }
 
                     @Override
                     public BitmapMat process(BitmapMat bitmapMat) {
+
+
                         return bitmapMat;
                     }
                 });

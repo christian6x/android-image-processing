@@ -499,8 +499,8 @@ public final class BitmapProcess {
             }
 
             Bitmap bitmap4 = Bitmap.createBitmap(mat3.width(), mat3.height(), bBitmap.getConfig());
-            Utils.matToBitmap(mat3, bitmap4);
-            SaveFile(bitmap4, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "HARRIS_FIRST"));
+         //   Utils.matToBitmap(mat3, bitmap4);
+        //    SaveFile(bitmap4, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "HARRIS_FIRST"));
 
             // *****************************************************
 
@@ -509,27 +509,36 @@ public final class BitmapProcess {
             Rect rec = Imgproc.boundingRect(biggestCountour);
 
             // Mat imCrop =  new Mat(mat,minRect.boundingRect());
+            /*
+            Mat to oryginalna bitmapa
+             */
             Mat imCrop=  new Mat(mat,rec);
 
             bitmap4 = Bitmap.createBitmap(imCrop.width(), imCrop.height(), bBitmap.getConfig());
 
             Utils.matToBitmap(imCrop, bitmap4);
-        //    SaveFile(bitmap4, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "CROPPPED"));
+            SaveFile(bitmap4, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "CROPPPED"));
 
             /*
                 Przetwarzanie na wyciętym fragmeńcie
              */
-            mat2 = new Mat(bitmap4.getHeight(), bitmap4.getWidth(), CvType.CV_8UC1);
+//            mat2 = new Mat(bitmap4.getHeight(), bitmap4.getWidth(), CvType.CV_8UC1);
+            mat2 = imCrop.clone();
 
-            Utils.bitmapToMat(bitmap4, mat2);
+
+     //       Utils.bitmapToMat(bitmap4, mat2);
+
+
+
+
             Imgproc.cvtColor(mat2, mat2, Imgproc.COLOR_RGB2GRAY);
             Imgproc.GaussianBlur(mat2, mat2, new Size(3, 3), 0);
             Imgproc.threshold(mat2, mat2, 0, 255, Imgproc.THRESH_OTSU);
             Imgproc.threshold(mat2, mat2, 0, 255, Imgproc.THRESH_BINARY_INV);
             Utils.matToBitmap(mat2, bitmap4);
-            // Utils.bitmapToMat(bitmap4, mat2);
+        //     Utils.bitmapToMat(bitmap4, mat2);
 
-          //  SaveFile(bitmap4, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "CROPPPED_NORMALIZED"));
+        //    SaveFile(bitmap4, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "CROPPPED_NORMALIZED"));
 
             biggestCountour = getBiggestCountour(mat2);
             contours.clear();
@@ -565,10 +574,10 @@ public final class BitmapProcess {
             colors[3] = new Scalar(255, 0, 0);          // RED
 
 
-            Bitmap bb3 = bitmap4.copy(bitmap4.getConfig(),true);
+        //    Bitmap bb3 = bitmap4.copy(bitmap4.getConfig(),true);
 
-            Utils.matToBitmap(mat3, bb3);
-            SaveFile(bb3, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "CORNER_HARRIS"));
+        //    Utils.matToBitmap(mat3, bb3);
+        //    SaveFile(bb3, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "CORNER_HARRIS"));
 
 
 
@@ -706,18 +715,21 @@ public final class BitmapProcess {
 
             double x;
             double y;
+            String suffix;
             if(p1 < p2)
             {
 
                 // Bok dłuższy to p1
-                if(mat3.width() < p2) {
+                if(mat3.width() > p2) {
                     Log.d("BitmapProcess", "1");
-                    x = p2;
-                    y = p1;
+                    suffix = "1__";
+                    x = p1;
+                    y = p2;
                 }
                 else
                 {
                     Log.d("BitmapProcess", "2");
+                    suffix = "2__";
                     x = p1;
                     y = p2;
 
@@ -726,8 +738,9 @@ public final class BitmapProcess {
             else
             {
                 // Bok dłuższy to p2
-                if(mat3.width() < p1) {
+                if(mat3.width() > p1) {
                     Log.d("BitmapProcess", "3");
+                    suffix = "3__";
                     x = p1;
                     y = p2;
 
@@ -735,6 +748,7 @@ public final class BitmapProcess {
                 else
                 {
                     Log.d("BitmapProcess", "4");
+                    suffix = "4__";
                     x = p2;
                     y = p1;
                 }
@@ -808,8 +822,8 @@ public final class BitmapProcess {
             Imgproc.circle(matBb, maxxlUp, 10, colors[3], 4);   // 0   MAX
 
 
-            Utils.matToBitmap(matBb, bb2);
-            SaveFile(bb2, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "circle_DUO"));
+         //   Utils.matToBitmap(matBb, bb2);
+         //   SaveFile(bb2, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "circle_DUO"));
 
             List<Point> src = new ArrayList<Point>();
             src.add(maxxlDown);
@@ -851,11 +865,22 @@ public final class BitmapProcess {
             Rect rec2 = new Rect( (int) maxxlDown.x, (int) maxxlDown.y, (int) (maxxrDown.x - maxxlDown.x), (int) (maxxrUp.y - maxxlDown.y));
 
             imCrop=  new Mat(outputMat,rec2);
-            Bitmap rBitmap2 = Bitmap.createBitmap(imCrop.width(), imCrop.height(), bBitmap.getConfig());
-            Utils.matToBitmap(imCrop, rBitmap2);
-            SaveFile(rBitmap2, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "POSSIBLE_ROTATED_I"));
-            imCrop.release();
-            return rBitmap2;
+            Bitmap rBitmap2 = null;
+            try {
+                Log.d("BitmapProcess", "imCrop size : " + imCrop.width() + " x " + imCrop.height());
+                rBitmap2 = Bitmap.createBitmap(imCrop.width(), imCrop.height(), bBitmap.getConfig());
+                Utils.matToBitmap(imCrop, rBitmap2);
+                SaveFile(rBitmap2, new File("/sdcard/debug", suffix + String.valueOf(System.currentTimeMillis()) + "POSSIBLE_ROTATED_I"));
+                imCrop.release();
+            }
+            catch(Exception e)
+            {
+                rBitmap2 = Bitmap.createBitmap(bitmap);
+            }
+            finally {
+                return rBitmap2;
+            }
+
         }
 
 

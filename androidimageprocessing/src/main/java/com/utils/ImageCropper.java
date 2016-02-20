@@ -123,33 +123,33 @@ public class ImageCropper implements Runnable {
         Bitmap bitmap = BitmapProcess.WriteCountoursOnBitmap(pBitmap, mBitmapMat);
         mBitmapMat.setBitmap(bitmap);
 
-        Log.i(TAG,description);
-
-        FileOutputStream output = null;
-        FileOutputStream outputBitmap = null;
-        try {
-            Log.i("CROPPER_TIME","Writing files");
-            output = new FileOutputStream(mFile+".jpg");
-
-            outputBitmap = new FileOutputStream(mFile+"org"+".jpg");
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, output);
-        //    byte[] byteArray = stream.toByteArray();
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputBitmap);
-           // output.write(bytes);
-        //    outputBitmap.write(bytes);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (null != output) {
-                try {
-                    output.close();
-                    outputBitmap.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
+//        Log.i(TAG,description);
+//
+//        FileOutputStream output = null;
+//        FileOutputStream outputBitmap = null;
+//        try {
+//         //   Log.i("CROPPER_TIME","Writing files");
+//         //   output = new FileOutputStream(mFile+".jpg");
+//
+//        //    outputBitmap = new FileOutputStream(mFile+"org"+".jpg");
+//        //    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, output);
+//        //    byte[] byteArray = stream.toByteArray();
+//        //    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputBitmap);
+//           // output.write(bytes);
+//        //    outputBitmap.write(bytes);
+//
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        } finally {
+//            if (null != output) {
+//                try {
+//                    output.close();
+//                    outputBitmap.close();
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//        }
         Log.i("CROPPER_TIME","Completed");
     }
 
