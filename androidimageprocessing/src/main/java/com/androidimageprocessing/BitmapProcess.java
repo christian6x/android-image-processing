@@ -374,10 +374,14 @@ public final class BitmapProcess {
     }
 
     public static BitmapMat OpenCVFindCountours(BitmapMat bitMat) {
-        return OpenCVFindCountours(bitMat,false);
+        return OpenCVFindCountours(bitMat, false);
+    }
+    private static MatOfPoint getBiggestCountour(Mat mat)
+    {
+        return getBiggestCountour(mat,false);
     }
 
-    private static MatOfPoint getBiggestCountour(Mat mat)
+    private static MatOfPoint getBiggestCountour(Mat mat, boolean debug)
     {
         try {
             Imgproc.cvtColor(mat, mat, Imgproc.COLOR_RGB2GRAY);
@@ -394,22 +398,27 @@ public final class BitmapProcess {
         HashMap<MatOfPoint, Double> shapeMap = new HashMap<MatOfPoint, Double>();
         MatOfPoint bContour = new MatOfPoint();
         double maxSize = 0;
+        double maxBoundingRectSize = mat.size().area() * 0.95;
         int bCountourId = 0;
         for(int i=0; i< contours.size();i++){
             MatOfPoint2f NewMtx = new MatOfPoint2f( contours.get(i).toArray() );
-            double peri = Imgproc.arcLength(NewMtx, true);
-            MatOfPoint2f DstMtx = NewMtx;
-            Imgproc.approxPolyDP(NewMtx, DstMtx, 0.08 * peri, true);
             double area = Imgproc.contourArea(contours.get(i));
-            if(DstMtx.rows() == 4) {
-                shapeMap.put(contours.get(i), area);
-                if (maxSize < area) {
-                    maxSize = area;
-                    bContour = contours.get(i);
-                    bCountourId = i;
+            MatOfPoint2f DstMtx = NewMtx;
+            // Odrzucam kształty pokrywające całą płaszczyznę
+            if(Imgproc.minAreaRect(DstMtx).boundingRect().area() < maxBoundingRectSize)
+            {
+                double peri = Imgproc.arcLength(NewMtx, true);
+                Imgproc.approxPolyDP(NewMtx, DstMtx, 0.08 * peri, true);
+                if(DstMtx.rows() == 4)
+                {
+                        shapeMap.put(contours.get(i), area);
+                        if (maxSize < area) {
+                            maxSize = area;
+                            bContour = contours.get(i);
+                            bCountourId = i;
+                        }
                 }
             }
-
         }
 
 
@@ -418,6 +427,8 @@ public final class BitmapProcess {
         if(!bContour.empty())
         {
             bCoutnour = contours.get(bCountourId);
+            if(debug)
+                Log.d("BitmapProcess", "BOUNDING RECT SIZE : " + maxBoundingRectSize + "COUNTOUR SIZE" + maxSize + " AREA SIZE" + mat.size().area() + " COUNTOUR MESS " + bCoutnour.height() + " X " + bCoutnour.width() + "\nMAT MESS " + mat.width() + " X " + mat.height() );
         }
         return bCoutnour;
     }
@@ -474,7 +485,7 @@ public final class BitmapProcess {
         // Imgproc.resize(mat2, mat2, new Size(bitmap.getWidth(), bitmap.getHeight()));
         // mat2 powinno być w skali
         if(!mat2.empty()) {
-            MatOfPoint biggestCountour = getBiggestCountour(mat2);
+            MatOfPoint biggestCountour = getBiggestCountour(mat2,true);
 
             /*
             Wycinanie fragmentu i obracanie
@@ -499,8 +510,8 @@ public final class BitmapProcess {
             }
 
             Bitmap bitmap4 = Bitmap.createBitmap(mat3.width(), mat3.height(), bBitmap.getConfig());
-         //   Utils.matToBitmap(mat3, bitmap4);
-        //    SaveFile(bitmap4, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "HARRIS_FIRST"));
+            Utils.matToBitmap(mat3, bitmap4);
+            //SaveFile(bitmap4, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "HARRIS_FIRST"));
 
             // *****************************************************
 
@@ -516,8 +527,8 @@ public final class BitmapProcess {
 
             bitmap4 = Bitmap.createBitmap(imCrop.width(), imCrop.height(), bBitmap.getConfig());
 
-            Utils.matToBitmap(imCrop, bitmap4);
-            SaveFile(bitmap4, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "CROPPPED"));
+            //Utils.matToBitmap(imCrop, bitmap4);
+            //SaveFile(bitmap4, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "CROPPPED"));
 
             /*
                 Przetwarzanie na wyciętym fragmeńcie
@@ -534,21 +545,20 @@ public final class BitmapProcess {
             Imgproc.cvtColor(mat2, mat2, Imgproc.COLOR_RGB2GRAY);
             Imgproc.GaussianBlur(mat2, mat2, new Size(3, 3), 0);
             Imgproc.threshold(mat2, mat2, 0, 255, Imgproc.THRESH_OTSU);
-            Imgproc.threshold(mat2, mat2, 0, 255, Imgproc.THRESH_BINARY_INV);
+            //Imgproc.threshold(mat2, mat2, 0, 255, Imgproc.THRESH_BINARY_INV);
             Utils.matToBitmap(mat2, bitmap4);
-        //     Utils.bitmapToMat(bitmap4, mat2);
+            // Utils.bitmapToMat(bitmap4, mat2);
+             //   SaveFile(bitmap4, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "CROPPPED_NORMALIZED"));
 
-        //    SaveFile(bitmap4, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "CROPPPED_NORMALIZED"));
-
-            biggestCountour = getBiggestCountour(mat2);
+            biggestCountour = getBiggestCountour(mat2,true);
             contours.clear();
             contours.add(biggestCountour);
 
             mat3 = new Mat(bitmap4.getHeight(), bitmap4.getWidth(), CvType.CV_8UC1);
 
-            Imgproc.drawContours(mat3, contours, 0, new Scalar(255, 255, 255));
-            Utils.matToBitmap(mat3, bitmap4);
-    //        SaveFile(bitmap4, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "CROPPED_BIGGEST_COUNTOUR"));
+          //  Imgproc.drawContours(mat3, contours, 0, new Scalar(255, 255, 255));
+          //  Utils.matToBitmap(mat3, bitmap4);
+           // SaveFile(bitmap4, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "CROPPED_BIGGEST_COUNTOUR"));
 
 
             Mat mat4 = new Mat(bitmap4.getHeight(), bitmap4.getWidth(), CvType.CV_8UC1);
@@ -574,10 +584,10 @@ public final class BitmapProcess {
             colors[3] = new Scalar(255, 0, 0);          // RED
 
 
-        //    Bitmap bb3 = bitmap4.copy(bitmap4.getConfig(),true);
+         //   Bitmap bb3 = bitmap4.copy(bitmap4.getConfig(),true);
 
-        //    Utils.matToBitmap(mat3, bb3);
-        //    SaveFile(bb3, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "CORNER_HARRIS"));
+         //   Utils.matToBitmap(mat3, bb3);
+         //   SaveFile(bb3, new File("/sdcard/debug", String.valueOf(System.currentTimeMillis()) + "CORNER_HARRIS"));
 
 
 
@@ -872,6 +882,7 @@ public final class BitmapProcess {
                 Utils.matToBitmap(imCrop, rBitmap2);
                 SaveFile(rBitmap2, new File("/sdcard/debug", suffix + String.valueOf(System.currentTimeMillis()) + "POSSIBLE_ROTATED_I"));
                 imCrop.release();
+                SaveFile(bitmap, new File("/sdcard/debug", suffix + String.valueOf(System.currentTimeMillis()) + "ORIGINAL"));
             }
             catch(Exception e)
             {
